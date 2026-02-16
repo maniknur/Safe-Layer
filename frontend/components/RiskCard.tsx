@@ -9,9 +9,9 @@ interface RiskCardProps {
 
 export default function RiskCard({ data }: RiskCardProps) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 sm:p-8">
+    <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-7">
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3 mb-2">
             <p className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Address</p>
@@ -37,10 +37,10 @@ export default function RiskCard({ data }: RiskCardProps) {
       </div>
 
       {/* Risk Score Gauge */}
-      <div className="mb-8">
-        <div className="flex justify-between items-baseline mb-3">
-          <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wide">Risk Score</h4>
-          <span className={`text-4xl font-light tracking-tight ${getRiskBadgeClasses(data.riskLevel).split(' ')[0]}`}>
+      <div className="mb-8 pb-8 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex justify-between items-baseline mb-4">
+          <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Risk Score</h4>
+          <span className={`text-5xl font-light tracking-tighter ${getRiskBadgeClasses(data.riskLevel).split(' ')[0]}`}>
             {data.riskScore}
           </span>
         </div>
@@ -63,7 +63,7 @@ export default function RiskCard({ data }: RiskCardProps) {
       </div>
 
       {/* Risk Level Badge + Rug Pull Risk */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2.5 pt-2">
         <div className={`inline-block px-4 py-2 rounded-md border font-medium text-sm ${getRiskBadgeClasses(data.riskLevel)}`}>
           {data.riskLevel} Risk
         </div>

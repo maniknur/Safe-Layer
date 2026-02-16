@@ -1,207 +1,172 @@
 'use client';
 
-import { RiskComponents } from '@/lib/types';
+import type { RiskData } from '@/lib/types';
 
 interface FormulaBreakdownProps {
-  components: RiskComponents;
-  riskScore: number;
-  flags: string[] | any[];
+  data: RiskData;
 }
 
-export default function FormulaBreakdown({ components, riskScore, flags }: FormulaBreakdownProps) {
-  // The formula: (transaction×0.45) + (contract×0.25) + (liquidity×0.20) + (behavioral×0.10)
-  const weights = {
-    transactionRisk: 0.45,
-    contractRisk: 0.25,
-    liquidityRisk: 0.20,
-    behavioralRisk: 0.10
-  };
+function getComponentColor(score: number): string {
+  if (score >= 60) return 'bg-red-500';
+  if (score >= 40) return 'bg-orange-500';
+  if (score >= 20) return 'bg-yellow-500';
+  return 'bg-green-500';
+}
 
-  const weighted = {
-    transactionRisk: components.transactionRisk * weights.transactionRisk,
-    contractRisk: components.contractRisk * weights.contractRisk,
-    liquidityRisk: components.liquidityRisk * weights.liquidityRisk,
-    behavioralRisk: components.behavioralRisk * weights.behavioralRisk
-  };
+function getComponentLabel(score: number): string {
+  if (score >= 60) return 'High';
+  if (score >= 40) return 'Medium';
+  if (score >= 20) return 'Low';
+  return 'Very Low';
+}
 
-  const sum = Object.values(weighted).reduce((a, b) => a + b, 0);
+export default function FormulaBreakdown({ data }: FormulaBreakdownProps) {
+  const calc = data.scoreCalculation;
 
-  const floorRules = [
+  if (!calc) {
+    return (
+      <div className="text-center py-8 text-sm text-slate-500 dark:text-slate-400">
+        Score calculation data not available.
+      </div>
+    );
+  }
+
+  const components = [
     {
-      name: 'Max Component Floor',
-      applies: Math.max(components.transactionRisk, components.contractRisk, components.liquidityRisk, components.behavioralRisk) >= 50,
-      effect: 'If any component ≥ 50, overall score ≥ 42'
+      label: 'Contract Risk',
+      key: 'contract_risk' as const,
+      weight: calc.weights.contract_risk,
+      raw: calc.rawScores.contract_risk,
+      color: 'text-purple-600 dark:text-purple-400',
     },
     {
-      name: 'Red Flag Floor',
-      applies: flags && flags.length >= 3,
-      effect: '3+ red flags → overall score ≥ 45'
-    }
+      label: 'On-chain Behavior Risk',
+      key: 'behavior_risk' as const,
+      weight: calc.weights.behavior_risk,
+      raw: calc.rawScores.behavior_risk,
+      color: 'text-blue-600 dark:text-blue-400',
+    },
+    {
+      label: 'Reputation Risk',
+      key: 'reputation_risk' as const,
+      weight: calc.weights.reputation_risk,
+      raw: calc.rawScores.reputation_risk,
+      color: 'text-amber-600 dark:text-amber-400',
+    },
   ];
 
-  const finalScore = Math.max(sum, ...floorRules.filter(r => r.applies).map(r => {
-    if (r.name === 'Max Component Floor') return 42;
-    if (r.name === 'Red Flag Floor') return 45;
-    return 0;
-  }));
-
-  function getComponentColor(score: number): string {
-    if (score >= 60) return 'bg-red-500';
-    if (score >= 40) return 'bg-orange-500';
-    if (score >= 20) return 'bg-yellow-500';
-    return 'bg-green-500';
-  }
-
-  function getComponentLabel(score: number): string {
-    if (score >= 60) return 'Critical';
-    if (score >= 40) return 'Medium';
-    if (score >= 20) return 'Low';
-    return 'Very Low';
-  }
+  const weightedSum = components.reduce((sum, c) => sum + c.raw * c.weight, 0);
 
   return (
     <div className="space-y-6">
-      {/* Formula Explanation */}
-      <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-        <h3 className="font-medium text-slate-900 dark:text-white mb-3">Risk Calculation Formula</h3>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-3 font-mono text-sm mb-3">
-          <p className="text-slate-700 dark:text-slate-300">
-            <span className="text-blue-600 dark:text-blue-400">Overall Risk</span> = 
-            <span className="text-red-600 dark:text-red-400"> T × 45%</span> + 
-            <span className="text-green-600 dark:text-green-400"> C × 25%</span> + 
-            <span className="text-yellow-600 dark:text-yellow-400"> L × 20%</span> + 
-            <span className="text-purple-600 dark:text-purple-400"> B × 10%</span>
+      {/* Formula Display */}
+      <div>
+        <h3 className="text-sm font-medium text-slate-900 dark:text-white uppercase tracking-wide mb-3">
+          How This Score Is Calculated
+        </h3>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md p-4 font-mono text-sm">
+          <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+            <span className="text-slate-900 dark:text-white font-medium">Risk Score</span> ={' '}
+            <span className="text-purple-600 dark:text-purple-400">(Contract Risk x {(calc.weights.contract_risk * 100).toFixed(0)}%)</span>{' '}
+            + <span className="text-blue-600 dark:text-blue-400">(Behavior Risk x {(calc.weights.behavior_risk * 100).toFixed(0)}%)</span>{' '}
+            + <span className="text-amber-600 dark:text-amber-400">(Reputation Risk x {(calc.weights.reputation_risk * 100).toFixed(0)}%)</span>
           </p>
         </div>
-        <p className="text-xs text-slate-600 dark:text-slate-400">
-          Where T = Transaction Risk, C = Contract Risk, L = Liquidity Risk, B = Behavioral Risk
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+          Each category is scored 0-100 independently, then combined using the weights above.
         </p>
       </div>
 
-      {/* Component Breakdown */}
-      <div className="space-y-4">
-        <h3 className="font-medium text-slate-900 dark:text-white">Component Scores</h3>
-
-        {/* Transaction Risk */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-medium text-slate-900 dark:text-white">Transaction Risk (45% weight)</span>
-            <span className="text-lg font-bold text-slate-900 dark:text-white">{components.transactionRisk}</span>
-          </div>
-          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 mb-2">
-            <div
-              className={`h-2 rounded-full ${getComponentColor(components.transactionRisk)}`}
-              style={{ width: `${Math.min(components.transactionRisk, 100)}%` }}
-            />
-          </div>
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-slate-600 dark:text-slate-400">{getComponentLabel(components.transactionRisk)}</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">
-              Contribution: {weighted.transactionRisk.toFixed(2)} pts
-            </span>
-          </div>
-        </div>
-
-        {/* Contract Risk */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-medium text-slate-900 dark:text-white">Contract Risk (25% weight)</span>
-            <span className="text-lg font-bold text-slate-900 dark:text-white">{components.contractRisk}</span>
-          </div>
-          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 mb-2">
-            <div
-              className={`h-2 rounded-full ${getComponentColor(components.contractRisk)}`}
-              style={{ width: `${Math.min(components.contractRisk, 100)}%` }}
-            />
-          </div>
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-slate-600 dark:text-slate-400">{getComponentLabel(components.contractRisk)}</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">
-              Contribution: {weighted.contractRisk.toFixed(2)} pts
-            </span>
-          </div>
-        </div>
-
-        {/* Liquidity Risk */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-medium text-slate-900 dark:text-white">Liquidity Risk (20% weight)</span>
-            <span className="text-lg font-bold text-slate-900 dark:text-white">{components.liquidityRisk}</span>
-          </div>
-          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 mb-2">
-            <div
-              className={`h-2 rounded-full ${getComponentColor(components.liquidityRisk)}`}
-              style={{ width: `${Math.min(components.liquidityRisk, 100)}%` }}
-            />
-          </div>
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-slate-600 dark:text-slate-400">{getComponentLabel(components.liquidityRisk)}</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">
-              Contribution: {weighted.liquidityRisk.toFixed(2)} pts
-            </span>
-          </div>
-        </div>
-
-        {/* Behavioral Risk */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-medium text-slate-900 dark:text-white">Behavioral Risk (10% weight)</span>
-            <span className="text-lg font-bold text-slate-900 dark:text-white">{components.behavioralRisk}</span>
-          </div>
-          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 mb-2">
-            <div
-              className={`h-2 rounded-full ${getComponentColor(components.behavioralRisk)}`}
-              style={{ width: `${Math.min(components.behavioralRisk, 100)}%` }}
-            />
-          </div>
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-slate-600 dark:text-slate-400">{getComponentLabel(components.behavioralRisk)}</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">
-              Contribution: {weighted.behavioralRisk.toFixed(2)} pts
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Floor Rules */}
+      {/* Component Scores */}
       <div className="space-y-3">
-        <h3 className="font-medium text-slate-900 dark:text-white">Floor Rules Applied</h3>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg divide-y divide-slate-200 dark:divide-slate-800">
-          {floorRules.map((rule, idx) => (
-            <div key={idx} className="p-3 flex items-start justify-between">
-              <div className="flex-1">
-                <p className="font-semibold text-slate-900 dark:text-white text-sm">{rule.name}</p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{rule.effect}</p>
+        <h3 className="text-sm font-medium text-slate-900 dark:text-white uppercase tracking-wide">
+          Category Scores
+        </h3>
+        {components.map(comp => {
+          const weighted = comp.raw * comp.weight;
+          return (
+            <div key={comp.key} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-slate-900 dark:text-white">
+                  {comp.label}
+                  <span className="text-xs text-slate-500 dark:text-slate-400 ml-2">
+                    ({(comp.weight * 100).toFixed(0)}% weight)
+                  </span>
+                </span>
+                <span className={`text-lg font-light ${comp.color}`}>{comp.raw}</span>
               </div>
-              <div className={`px-3 py-1 rounded text-xs font-semibold whitespace-nowrap ml-2 ${
-                rule.applies 
-                  ? 'bg-orange-100 dark:bg-orange-950/30 text-orange-900 dark:text-orange-200' 
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-              }`}>
-                {rule.applies ? 'Active' : 'Inactive'}
+              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mb-2">
+                <div
+                  className={`h-1.5 rounded-full ${getComponentColor(comp.raw)}`}
+                  style={{ width: `${Math.min(comp.raw, 100)}%` }}
+                />
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500 dark:text-slate-400">{getComponentLabel(comp.raw)}</span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">
+                  Contribution: {weighted.toFixed(1)} pts
+                </span>
               </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
-      {/* Final Result */}
-      <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700">
-            <span className="font-semibold text-slate-900 dark:text-white">Base Calculation (Weighted Sum)</span>
-            <span className="font-bold text-lg text-slate-900 dark:text-white">{sum.toFixed(2)} pts</span>
+      {/* Weight Explanation */}
+      <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-md p-4">
+        <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-3">Why These Weights?</h4>
+        <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
+          <li className="flex gap-2">
+            <span className="text-purple-500 font-bold shrink-0">40%</span>
+            <span><strong className="text-slate-800 dark:text-slate-200">Contract Risk</strong> — Smart contract vulnerabilities are the primary vector for rugpulls and exploits.</span>
+          </li>
+          <li className="flex gap-2">
+            <span className="text-blue-500 font-bold shrink-0">40%</span>
+            <span><strong className="text-slate-800 dark:text-slate-200">On-chain Behavior</strong> — Transaction patterns, liquidity depth, and holder activity reveal real-time risk signals.</span>
+          </li>
+          <li className="flex gap-2">
+            <span className="text-amber-500 font-bold shrink-0">20%</span>
+            <span><strong className="text-slate-800 dark:text-slate-200">Reputation</strong> — Transparency, audit status, and scam database matches provide external validation.</span>
+          </li>
+        </ul>
+      </div>
+
+      {/* Adjustments Applied */}
+      {calc.adjustments && calc.adjustments.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-slate-900 dark:text-white uppercase tracking-wide mb-3">
+            Adjustments Applied
+          </h3>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md divide-y divide-slate-200 dark:divide-slate-800">
+            {calc.adjustments.map((adj, idx) => (
+              <div key={idx} className="px-4 py-3 flex items-start gap-3">
+                <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                  adj.includes('→') ? 'bg-orange-500' : 'bg-slate-400'
+                }`} />
+                <span className="text-sm text-slate-700 dark:text-slate-300 font-light">{adj}</span>
+              </div>
+            ))}
           </div>
+        </div>
+      )}
+
+      {/* Final Calculation */}
+      <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-md p-4 space-y-3">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700">
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Weighted Sum</span>
+          <span className="text-lg font-light text-slate-900 dark:text-white">{Math.round(weightedSum)}</span>
+        </div>
+        {calc.finalScore !== Math.round(weightedSum) && (
           <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700">
-            <span className="font-semibold text-slate-900 dark:text-white">Floor Rules Adjustment</span>
-            <span className="font-bold text-lg text-slate-900 dark:text-white">
-              {finalScore > sum ? `+${(finalScore - sum).toFixed(2)} pts` : '—'}
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">After Adjustments</span>
+            <span className="text-lg font-light text-orange-600 dark:text-orange-400">
+              +{calc.finalScore - Math.round(weightedSum)} pts
             </span>
           </div>
-          <div className="flex items-center justify-between pt-2">
-            <span className="font-bold text-slate-900 dark:text-white text-lg">Final Risk Score</span>
-            <span className="font-bold text-3xl text-slate-900 dark:text-white">{riskScore}</span>
-          </div>
+        )}
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-sm font-semibold text-slate-900 dark:text-white">Final Risk Score</span>
+          <span className="text-3xl font-light text-slate-900 dark:text-white">{data.riskScore}</span>
         </div>
       </div>
     </div>

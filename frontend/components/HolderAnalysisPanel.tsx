@@ -1,185 +1,127 @@
 'use client';
 
-import { HolderAnalysis } from '@/lib/types';
-import { AlertCircle, TrendingDown, ExternalLink } from 'lucide-react';
+import type { RiskData } from '@/lib/types';
 
 interface HolderAnalysisPanelProps {
-  holders?: HolderAnalysis;
-  address: string;
+  data: RiskData;
 }
 
-export default function HolderAnalysisPanel({ holders, address }: HolderAnalysisPanelProps) {
-  // Mock data if not provided
-  const mockHolders: HolderAnalysis = holders || {
-    top1Percent: 45,
-    top5Percent: 72,
-    top10Percent: 88,
-    totalHolders: 1250,
-    concentration: 'HIGH'
-  };
-
-  const concentrationRiskLevel = mockHolders.top1Percent && mockHolders.top1Percent >= 40 ? 'CRITICAL' : 'MODERATE';
-  const isHighRisk = mockHolders.concentration === 'HIGH' || mockHolders.concentration === 'VERY_HIGH';
-
-  const bscscanHoldersLink = `https://bscscan.com/token/${address}#holders`;
+export default function HolderAnalysisPanel({ data }: HolderAnalysisPanelProps) {
+  const wallet = data.analysis?.wallet;
+  const onchain = data.analysis?.onchain;
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium text-slate-900 dark:text-white">Holder Concentration Analysis</h3>
+    <div className="space-y-5">
+      <h3 className="text-sm font-medium text-slate-900 dark:text-white uppercase tracking-wide">
+        Wallet History & Fund Flow
+      </h3>
 
-      {isHighRisk && (
-        <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <div className="flex items-start gap-2">
-            <AlertCircle size={20} className="text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-semibold text-red-900 dark:text-red-200">High Concentration Risk</p>
-              <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                Token ownership is concentrated among a few holders. This increases risk of sudden price dumps or manipulation.
-              </p>
-            </div>
+      {/* Wallet Metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <MetricCard label="Transactions" value={wallet?.transactionCount?.toString() ?? '0'} />
+        <MetricCard label="Age (days)" value={wallet?.ageInDays?.toString() ?? '0'} />
+        <MetricCard label="Balance" value={`${parseFloat(wallet?.balanceBNB ?? '0').toFixed(4)} BNB`} />
+        <MetricCard label="Wallet Score" value={`${wallet?.score ?? 0}/100`} />
+      </div>
+
+      {/* Fund Flow Summary */}
+      {wallet?.fundFlowSummary && (
+        <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-md p-4">
+          <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Fund Flow Summary</p>
+          <p className="text-sm text-slate-700 dark:text-slate-300 font-light font-mono">{wallet.fundFlowSummary}</p>
+        </div>
+      )}
+
+      {/* Deployed Contracts */}
+      {wallet?.deployedContracts && wallet.deployedContracts.length > 0 && (
+        <div>
+          <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+            Deployed Contracts ({wallet.deployedContracts.length})
+          </p>
+          <div className="space-y-1.5">
+            {wallet.deployedContracts.slice(0, 10).map((addr, idx) => (
+              <div key={idx} className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2">
+                <span className="text-xs font-mono text-slate-700 dark:text-slate-300">
+                  {addr.slice(0, 10)}...{addr.slice(-6)}
+                </span>
+                <a
+                  href={`https://bscscan.com/address/${addr}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  BscScan
+                </a>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Holder Distribution */}
-      <div className="space-y-3">
-        <h4 className="font-medium text-slate-900 dark:text-white text-sm">Token Distribution</h4>
-
-        {/* Top 1% */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="font-medium text-slate-900 dark:text-white">Top 1% of Holders</p>
-              <p className={`text-xs font-semibold ${
-                concentrationRiskLevel === 'CRITICAL' 
-                  ? 'text-red-600 dark:text-red-400' 
-                  : 'text-orange-600 dark:text-orange-400'
-              }`}>
-                {concentrationRiskLevel === 'CRITICAL' ? '🔴 Critical' : '🟠 Moderate'}
-              </p>
-            </div>
-            <span className="text-2xl font-bold text-slate-900 dark:text-white">{mockHolders.top1Percent}%</span>
-          </div>
-          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
-            <div
-              className={`h-3 rounded-full ${
-                mockHolders.top1Percent && mockHolders.top1Percent >= 40 ? 'bg-red-500' : 'bg-orange-500'
-              }`}
-              style={{ width: `${Math.min(mockHolders.top1Percent || 0, 100)}%` }}
-            />
-          </div>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
-            {mockHolders.top1Percent && mockHolders.top1Percent >= 40
-              ? 'Critical concentration - High risk of rug pull'
-              : 'Concerning concentration - Monitor closely'}
+      {/* Linked Rugpulls */}
+      {wallet?.linkedRugpulls && wallet.linkedRugpulls.length > 0 && (
+        <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+          <p className="text-xs font-semibold text-red-900 dark:text-red-200 mb-2">
+            Linked Rugpull Contracts ({wallet.linkedRugpulls.length})
           </p>
-        </div>
-
-        {/* Top 5% */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="font-medium text-slate-900 dark:text-white">Top 5% of Holders</p>
-            <span className="text-2xl font-bold text-slate-900 dark:text-white">{mockHolders.top5Percent}%</span>
+          <div className="space-y-1.5">
+            {wallet.linkedRugpulls.map((addr, idx) => (
+              <div key={idx} className="flex items-center justify-between">
+                <span className="text-xs font-mono text-red-800 dark:text-red-300">
+                  {addr.slice(0, 10)}...{addr.slice(-6)}
+                </span>
+                <a
+                  href={`https://bscscan.com/address/${addr}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  BscScan
+                </a>
+              </div>
+            ))}
           </div>
-          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
-            <div
-              className="h-3 rounded-full bg-yellow-500"
-              style={{ width: `${Math.min(mockHolders.top5Percent || 0, 100)}%` }}
-            />
-          </div>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
-            Tokens held by top 5% holders
-          </p>
-        </div>
-
-        {/* Top 10% */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="font-medium text-slate-900 dark:text-white">Top 10% of Holders</p>
-            <span className="text-2xl font-bold text-slate-900 dark:text-white">{mockHolders.top10Percent}%</span>
-          </div>
-          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
-            <div
-              className="h-3 rounded-full bg-green-500"
-              style={{ width: `${Math.min(mockHolders.top10Percent || 0, 100)}%` }}
-            />
-          </div>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
-            Tokens held by top 10% holders
-          </p>
-        </div>
-      </div>
-
-      {/* Total Holders */}
-      {mockHolders.totalHolders && (
-        <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-          <p className="text-xs text-slate-600 dark:text-slate-400 uppercase font-semibold tracking-wide mb-1">Total Holders</p>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white">{mockHolders.totalHolders.toLocaleString()}</p>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
-            More holders generally indicates better distribution and lower rug pull risk
-          </p>
         </div>
       )}
 
-      {/* Concentration Metric */}
-      <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-        <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-3">Risk Interpretation</h4>
-        <div className="space-y-2 text-sm text-blue-800 dark:text-blue-300">
-          <div className="flex gap-2">
-            <span className="flex-shrink-0">
-              {mockHolders.top1Percent && mockHolders.top1Percent >= 50 ? '🔴' : mockHolders.top1Percent && mockHolders.top1Percent >= 30 ? '🟠' : '🟡'}
-            </span>
-            <span>Top 1% holder owns <strong>{mockHolders.top1Percent}%</strong> of all tokens</span>
-          </div>
-          <div className="flex gap-2">
-            <span className="flex-shrink-0">📊</span>
-            <span>Distribution across <strong>{mockHolders.totalHolders?.toLocaleString()}</strong> unique addresses</span>
-          </div>
-          <div className="flex gap-2">
-            <span className="flex-shrink-0">⚠️</span>
-            <span>
-              {isHighRisk
-                ? 'High concentration increases risk of instant liquidity withdrawal'
-                : 'Acceptable distribution, but monitor changes'}
-            </span>
+      {/* On-chain Liquidity Metrics */}
+      {onchain?.metrics && (
+        <div>
+          <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">On-Chain Metrics</p>
+          <div className="grid grid-cols-2 gap-3">
+            {onchain.metrics.liquidityBNB && (
+              <MetricCard label="Liquidity" value={`${onchain.metrics.liquidityBNB} BNB`} />
+            )}
+            <MetricCard label="DEX Pair" value={onchain.metrics.hasDexPair ? 'Found' : 'Not Found'} />
+            <MetricCard label="Rug Pull Risk" value={`${onchain.metrics.rugPullRisk}%`} />
+            {onchain.metrics.contractAgeDays !== null && (
+              <MetricCard label="Contract Age" value={`${onchain.metrics.contractAgeDays} days`} />
+            )}
           </div>
         </div>
-      </div>
+      )}
 
       {/* BscScan Link */}
-      <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-        <p className="text-sm text-slate-700 dark:text-slate-300 mb-3">
-          View complete holder list and real-time distribution on BscScan
-        </p>
+      <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-md p-3 flex items-center justify-between">
+        <span className="text-xs text-slate-600 dark:text-slate-400">View full holder list on BscScan</span>
         <a
-          href={bscscanHoldersLink}
+          href={`https://bscscan.com/token/${data.address}#holders`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors text-sm font-medium"
+          className="px-3 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded text-xs font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
         >
-          View Holders on BscScan
-          <ExternalLink size={16} className="hidden sm:inline" />
+          View Holders
         </a>
       </div>
+    </div>
+  );
+}
 
-      {/* Recommendations */}
-      <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-        <h4 className="font-semibold text-yellow-900 dark:text-yellow-200 mb-3">Recommendations</h4>
-        <ul className="space-y-2 text-sm text-yellow-800 dark:text-yellow-300">
-          <li className="flex gap-2">
-            <span className="flex-shrink-0">✓</span>
-            <span>Watch for large holder movements - sudden sales could crash price</span>
-          </li>
-          <li className="flex gap-2">
-            <span className="flex-shrink-0">✓</span>
-            <span>Check if top holders have vesting schedules or lock periods</span>
-          </li>
-          <li className="flex gap-2">
-            <span className="flex-shrink-0">✓</span>
-            <span>More evenly distributed tokens generally indicate healthier projects</span>
-          </li>
-        </ul>
-      </div>
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-3">
+      <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
+      <p className="text-sm font-medium text-slate-900 dark:text-white mt-0.5">{value}</p>
     </div>
   );
 }

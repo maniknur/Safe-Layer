@@ -1,228 +1,163 @@
 'use client';
 
-import { AuditInfo } from '@/lib/types';
-import { CheckCircle, AlertCircle, XCircle, ExternalLink } from 'lucide-react';
+import type { RiskData } from '@/lib/types';
 
 interface AuditPanelProps {
-  audits?: AuditInfo[];
-  address: string;
+  data: RiskData;
 }
 
-export default function AuditPanel({ audits, address }: AuditPanelProps) {
-  // Mock data if not provided
-  const mockAudits: AuditInfo[] = audits || [
-    {
-      firm: 'Certik',
-      date: '2024-01-15',
-      status: 'PASSED',
-      reportUrl: 'https://certik.com'
-    },
-    {
-      firm: 'SlowMist',
-      date: '2023-12-20',
-      status: 'FINDINGS',
-      reportUrl: 'https://slowmist.com'
-    }
-  ];
-
-  const hasAudits = mockAudits && mockAudits.length > 0;
-  const passedAudits = mockAudits?.filter(a => a.status === 'PASSED') || [];
-  const criticalAudits = mockAudits?.filter(a => a.status === 'CRITICAL') || [];
-
-  function getAuditBadgeColor(status?: string): string {
-    switch (status) {
-      case 'PASSED':
-        return 'bg-green-50 dark:bg-green-950/30 text-green-900 dark:text-green-200 border-green-200 dark:border-green-800';
-      case 'FINDINGS':
-        return 'bg-yellow-50 dark:bg-yellow-950/30 text-yellow-900 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800';
-      case 'CRITICAL':
-        return 'bg-red-50 dark:bg-red-950/30 text-red-900 dark:text-red-200 border-red-200 dark:border-red-800';
-      default:
-        return 'bg-slate-50 dark:bg-slate-800/30 text-slate-900 dark:text-slate-200 border-slate-200 dark:border-slate-700';
-    }
-  }
-
-  function getAuditIcon(status?: string) {
-    switch (status) {
-      case 'PASSED':
-        return <CheckCircle size={20} className="text-green-600 dark:text-green-400" />;
-      case 'FINDINGS':
-        return <AlertCircle size={20} className="text-yellow-600 dark:text-yellow-400" />;
-      case 'CRITICAL':
-        return <XCircle size={20} className="text-red-600 dark:text-red-400" />;
-      default:
-        return <AlertCircle size={20} className="text-slate-600 dark:text-slate-400" />;
-    }
-  }
+export default function AuditPanel({ data }: AuditPanelProps) {
+  const scam = data.analysis?.scamDatabase;
+  const contract = data.analysis?.contract;
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium text-slate-900 dark:text-white">Security Audits</h3>
+    <div className="space-y-5">
+      <h3 className="text-sm font-medium text-slate-900 dark:text-white uppercase tracking-wide">
+        Scam Database & Contract Security
+      </h3>
 
-      {hasAudits ? (
-        <>
-          {/* Summary */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <p className="text-xs text-slate-600 dark:text-slate-400 uppercase font-semibold tracking-wide mb-1">
-                Total Audits
-              </p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-white">{mockAudits?.length || 0}</p>
-            </div>
-            <div className={`border rounded-lg p-4 ${
-              passedAudits.length > 0 
-                ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' 
-                : 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800'
-            }`}>
-              <p className={`text-xs uppercase font-semibold tracking-wide mb-1 ${
-                passedAudits.length > 0 
-                  ? 'text-green-600 dark:text-green-400' 
-                  : 'text-yellow-600 dark:text-yellow-400'
-              }`}>
-                Passed
-              </p>
-              <p className={`text-3xl font-bold ${
-                passedAudits.length > 0 
-                  ? 'text-green-900 dark:text-green-200' 
-                  : 'text-yellow-900 dark:text-yellow-200'
-              }`}>
-                {passedAudits.length}
-              </p>
-            </div>
-          </div>
-
-          {/* Critical Findings Alert */}
-          {criticalAudits.length > 0 && (
-            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-              <div className="flex items-start gap-2">
-                <XCircle size={20} className="text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-semibold text-red-900 dark:text-red-200">Critical Issues Found</p>
-                  <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                    {criticalAudits.length} audit(s) reported critical security issues
-                  </p>
-                </div>
-              </div>
-            </div>
+      {/* Scam Database Status */}
+      <div className={`border rounded-md p-4 ${
+        scam?.knownScam || scam?.isBlacklisted
+          ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
+          : scam?.rugpullHistory
+          ? 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800'
+          : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
+      }`}>
+        <div className="flex items-center gap-2 mb-2">
+          {scam?.knownScam || scam?.isBlacklisted ? (
+            <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
           )}
+          <span className={`font-medium text-sm ${
+            scam?.knownScam || scam?.isBlacklisted
+              ? 'text-red-900 dark:text-red-200'
+              : 'text-green-900 dark:text-green-200'
+          }`}>
+            {scam?.knownScam ? 'KNOWN SCAM' : scam?.isBlacklisted ? 'BLACKLISTED' : 'No Scam Records Found'}
+          </span>
+        </div>
+        <p className={`text-xs ${
+          scam?.knownScam || scam?.isBlacklisted
+            ? 'text-red-700 dark:text-red-300'
+            : 'text-green-700 dark:text-green-300'
+        }`}>
+          {scam?.knownScam || scam?.isBlacklisted
+            ? 'This address was found in one or more scam databases. Exercise extreme caution.'
+            : 'Address not found in internal scam DB, honeypot registry, or community blacklist.'}
+        </p>
+      </div>
 
-          {/* Audit List */}
-          <div className="space-y-3">
-            {mockAudits?.map((audit, idx) => (
-              <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-start gap-3 flex-1">
-                    {getAuditIcon(audit.status)}
-                    <div>
-                      <p className="font-medium text-slate-900 dark:text-white">{audit.firm}</p>
-                      {audit.date && (
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                          Dated: {new Date(audit.date).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getAuditBadgeColor(audit.status)}`}>
-                    {audit.status}
-                  </span>
-                </div>
-
-                {audit.reportUrl && (
-                  <a
-                    href={audit.reportUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    View Audit Report
-                    <ExternalLink size={14} />
-                  </a>
-                )}
-              </div>
+      {/* Matched Databases */}
+      {scam?.matchedDatabase && scam.matchedDatabase.length > 0 && (
+        <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+          <p className="text-[10px] font-semibold text-red-800 dark:text-red-300 uppercase tracking-wider mb-2">Matched In</p>
+          <ul className="space-y-1">
+            {scam.matchedDatabase.map((db, idx) => (
+              <li key={idx} className="text-xs text-red-700 dark:text-red-300 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                {db}
+              </li>
             ))}
-          </div>
-
-          {/* Audit Interpretation */}
-          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-3">What This Means</h4>
-            <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-300">
-              {passedAudits.length > 0 && (
-                <li className="flex gap-2">
-                  <span className="flex-shrink-0">✓</span>
-                  <span>Third-party audits provide some verification of code quality</span>
-                </li>
-              )}
-              {criticalAudits.length > 0 && (
-                <li className="flex gap-2">
-                  <span className="flex-shrink-0">⚠️</span>
-                  <span>Critical issues found - verify if they've been patched</span>
-                </li>
-              )}
-              <li className="flex gap-2">
-                <span className="flex-shrink-0">💡</span>
-                <span>Always review the full audit report before investing</span>
-              </li>
-            </ul>
-          </div>
-        </>
-      ) : (
-        <>
-          {/* No Audits Found */}
-          <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-            <div className="flex items-start gap-2">
-              <AlertCircle size={20} className="text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-semibold text-yellow-900 dark:text-yellow-200">No Audits Found</p>
-                <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                  This contract has not been audited by known security firms.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Recommendation */}
-          <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
-            <h4 className="font-semibold text-orange-900 dark:text-orange-200 mb-3">Recommendation</h4>
-            <ul className="space-y-2 text-sm text-orange-800 dark:text-orange-300">
-              <li className="flex gap-2">
-                <span className="flex-shrink-0">⚠️</span>
-                <span>Lack of professional audit increases risk</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="flex-shrink-0">⚠️</span>
-                <span>No third-party verification of code security</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="flex-shrink-0">⚠️</span>
-                <span>More prone to undiscovered vulnerabilities</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="flex-shrink-0">💡</span>
-                <span>Check if audit is pending or in progress</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Popular Audit Firms */}
-          <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-            <h4 className="font-semibold text-slate-900 dark:text-white mb-2 text-sm">Common Audit Firms</h4>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <a href="https://certik.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
-                Certik →
-              </a>
-              <a href="https://slowmist.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
-                SlowMist →
-              </a>
-              <a href="https://hacken.io" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
-                Hacken →
-              </a>
-              <a href="https://www.byterocket.io" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
-                ByteRocket →
-              </a>
-            </div>
-          </div>
-        </>
+          </ul>
+        </div>
       )}
+
+      {/* Check Summary */}
+      <div className="grid grid-cols-3 gap-3">
+        <StatusCard
+          label="Known Scam"
+          status={scam?.knownScam ? 'danger' : 'safe'}
+          value={scam?.knownScam ? 'Yes' : 'No'}
+        />
+        <StatusCard
+          label="Blacklisted"
+          status={scam?.isBlacklisted ? 'danger' : 'safe'}
+          value={scam?.isBlacklisted ? 'Yes' : 'No'}
+        />
+        <StatusCard
+          label="Rugpull History"
+          status={scam?.rugpullHistory ? 'danger' : 'safe'}
+          value={scam?.rugpullHistory ? 'Yes' : 'No'}
+        />
+      </div>
+
+      {/* Contract Security Summary */}
+      {contract && contract.isContract && (
+        <div>
+          <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Contract Security Detections</p>
+          <div className="grid grid-cols-2 gap-2">
+            <DetectionRow label="Owner Privileges" detected={contract.detections.ownerPrivileges} />
+            <DetectionRow label="Withdraw Functions" detected={contract.detections.withdrawFunctions} />
+            <DetectionRow label="Mint Functions" detected={contract.detections.mintFunctions} />
+            <DetectionRow label="Proxy Pattern" detected={contract.detections.proxyPattern} />
+            <DetectionRow label="No Renounce" detected={contract.detections.noRenounceOwnership} />
+            <DetectionRow label="Upgradeability" detected={contract.detections.upgradeability} />
+            <DetectionRow label="Self-Destruct" detected={contract.detections.selfDestruct} />
+            <DetectionRow label="Honeypot Logic" detected={contract.detections.honeypotLogic} />
+          </div>
+        </div>
+      )}
+
+      {/* Contract Verification */}
+      {contract && contract.isContract && (
+        <div className={`border rounded-md p-4 ${
+          contract.isVerified
+            ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
+            : 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800'
+        }`}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`font-medium text-sm ${
+              contract.isVerified ? 'text-green-900 dark:text-green-200' : 'text-yellow-900 dark:text-yellow-200'
+            }`}>
+              Source Code: {contract.isVerified ? 'Verified' : 'Not Verified'}
+            </span>
+          </div>
+          <p className={`text-xs ${contract.isVerified ? 'text-green-700 dark:text-green-300' : 'text-yellow-700 dark:text-yellow-300'}`}>
+            {contract.isVerified
+              ? `Verified on BscScan${contract.compilerVersion ? ` (${contract.compilerVersion})` : ''}.`
+              : 'Contract source code is not verified on BscScan. Cannot inspect for malicious logic.'}
+          </p>
+        </div>
+      )}
+
+      {/* Databases Checked */}
+      <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-md p-3">
+        <p className="text-[10px] text-slate-500 dark:text-slate-400">
+          Checked: SafeLayer Internal DB, Honeypot Registry, Community Blacklist, Scam Deployer Registry, BscScan Verification
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function StatusCard({ label, status, value }: { label: string; status: 'safe' | 'danger'; value: string }) {
+  return (
+    <div className={`border rounded-md p-3 text-center ${
+      status === 'danger'
+        ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
+        : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
+    }`}>
+      <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
+      <p className={`text-sm font-medium mt-0.5 ${
+        status === 'danger' ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'
+      }`}>{value}</p>
+    </div>
+  );
+}
+
+function DetectionRow({ label, detected }: { label: string; detected: boolean }) {
+  return (
+    <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2">
+      <span className="text-xs text-slate-700 dark:text-slate-300">{label}</span>
+      <span className={`text-xs font-medium ${detected ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+        {detected ? 'Detected' : 'Clean'}
+      </span>
     </div>
   );
 }
