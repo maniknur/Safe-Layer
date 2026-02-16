@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, Check } from 'lucide-react';
 
 interface CodeSnippetProps {
   code: string;
@@ -32,9 +31,13 @@ export default function CodeSnippet({ code, language = 'solidity', title }: Code
           title="Copy code"
         >
           {copied ? (
-            <Check size={16} className="text-green-600 dark:text-green-400" />
+            <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
           ) : (
-            <Copy size={16} className="text-slate-700 dark:text-slate-300" />
+            <svg className="w-4 h-4 text-slate-700 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
           )}
         </button>
         <pre className="overflow-x-auto p-4 text-sm">

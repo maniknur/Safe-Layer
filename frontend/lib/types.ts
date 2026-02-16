@@ -186,9 +186,38 @@ export interface RiskData {
   // Explanation
   explanation: RiskExplanation;
 
+  // On-chain registry
+  registry: RegistryData | null;
+
   // Meta
   timestamp: string;
   analysisTimeMs: number;
+}
+
+// ─── On-Chain Registry ───
+export interface OnChainProof {
+  txHash: string;
+  blockNumber: number;
+  reportHash: string;
+  gasUsed: string;
+}
+
+export interface OnChainReport {
+  targetAddress: string;
+  riskScore: number;
+  riskLevel: string;
+  reportHash: string;
+  timestamp: string;
+  analyzer: string;
+}
+
+export interface RegistryData {
+  contractAddress: string;
+  onChainProof: OnChainProof | null;
+  previousReport: OnChainReport | null;
+  totalReportsForAddress: number;
+  submissionStatus: 'confirmed' | 'skipped';
+  submissionError: string | null;
 }
 
 export interface SearchHistoryItem {

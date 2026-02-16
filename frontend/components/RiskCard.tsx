@@ -1,7 +1,7 @@
 'use client'
 
 import type { RiskData } from '@/lib/types'
-import { shortenAddress, getRiskBadgeClasses, getRiskGaugeColor } from '@/lib/utils'
+import { getRiskBadgeClasses, getRiskGaugeColor } from '@/lib/utils'
 
 interface RiskCardProps {
   data: RiskData

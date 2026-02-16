@@ -37,16 +37,16 @@ async function main() {
   const contractAddress = await safeLayerRegistry.getAddress();
   console.log(chalk.green("✓ SafeLayerRegistry deployed at:"), contractAddress);
 
-  // Save deployment info
+  // Save deployment info (convert BigInt to Number for JSON serialization)
   const deploymentInfo = {
     contractName: "SafeLayerRegistry",
     address: contractAddress,
     deployer: deployer.address,
     network: network.name,
-    chainId: network.chainId,
+    chainId: Number(network.chainId),
     deploymentTime: new Date().toISOString(),
     txHash: safeLayerRegistry.deploymentTransaction()?.hash || "N/A",
-    blockNumber: (await hre.ethers.provider.getBlockNumber()),
+    blockNumber: Number(await hre.ethers.provider.getBlockNumber()),
   };
 
   const deploymentsDir = path.join(__dirname, "..", "deployments");
@@ -76,10 +76,10 @@ async function main() {
   console.log(`   REGISTRY_NETWORK=${network.name}`);
 
   // Print BscScan links
-  if (network.chainId === 97) {
+  if (network.chainId === 97n) {
     console.log(chalk.blue("\n========== BscScan Links =========="));
     console.log("Contract:", `https://testnet.bscscan.com/address/${contractAddress}#code`);
-  } else if (network.chainId === 56) {
+  } else if (network.chainId === 56n) {
     console.log(chalk.blue("\n========== BscScan Links =========="));
     console.log("Contract:", `https://bscscan.com/address/${contractAddress}#code`);
   }

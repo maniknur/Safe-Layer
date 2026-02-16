@@ -1,6 +1,7 @@
 import express from 'express';
 import { analyzeRiskIntelligence } from '../modules/aggregator/riskIntelligenceEngine';
 import { isValidAddress, normalizeAddress } from '../utils/validation';
+import { submitReport, getLatestReport, getReportCount } from '../services/registryService';
 import logger from '../utils/logger';
 
 const router = express.Router();
@@ -157,6 +158,43 @@ router.get('/:address', async (req: express.Request, res: express.Response, next
       // ─── Meta ───
       timestamp: intelligence.timestamp,
       analysisTimeMs: intelligence.analysisTimeMs,
+
+      // ─── On-Chain Registry (populated below) ───
+      registry: null as any,
+    };
+
+    // Submit report on-chain (fire-and-forget, don't block the response)
+    // Build the report data object that gets hashed for the on-chain proof
+    const reportData = {
+      address: intelligence.address,
+      riskScore: intelligence.risk_score,
+      riskLevel: intelligence.risk_level,
+      breakdown: intelligence.breakdown,
+      timestamp: intelligence.timestamp,
+      schemaVersion: '2.0',
+    };
+
+    // Run on-chain submission + existing report query in parallel
+    const [submitResult, existingReport, reportCount] = await Promise.all([
+      submitReport(address, intelligence.risk_score, reportData),
+      getLatestReport(address),
+      getReportCount(address),
+    ]);
+
+    response.registry = {
+      contractAddress: process.env.REGISTRY_CONTRACT_ADDRESS || '0x20B28a7b961a6d82222150905b0C01256607B5A3',
+      onChainProof: submitResult.success
+        ? {
+            txHash: submitResult.txHash,
+            blockNumber: submitResult.blockNumber,
+            reportHash: submitResult.reportHash,
+            gasUsed: submitResult.gasUsed,
+          }
+        : null,
+      previousReport: existingReport,
+      totalReportsForAddress: reportCount + (submitResult.success ? 1 : 0),
+      submissionStatus: submitResult.success ? 'confirmed' : 'skipped',
+      submissionError: submitResult.error || null,
     };
 
     // Cache the result

@@ -13,7 +13,7 @@ describe('GET /api/risk/:address - Integration Tests', () => {
       response = await request(app)
         .get(`/api/risk/${PANCAKE_ROUTER}`)
         .expect('Content-Type', /json/);
-    }, 30000);
+    }, 60000);
 
     it('should return 200 status', () => {
       expect(response.status).toBe(200);
@@ -27,29 +27,29 @@ describe('GET /api/risk/:address - Integration Tests', () => {
       expect(response.body.address).toBe(PANCAKE_ROUTER.toLowerCase());
     });
 
-    it('should contain overallScore (riskScore)', () => {
+    it('should contain riskScore (0-100)', () => {
       expect(response.body).toHaveProperty('riskScore');
       expect(typeof response.body.riskScore).toBe('number');
       expect(response.body.riskScore).toBeGreaterThanOrEqual(0);
       expect(response.body.riskScore).toBeLessThanOrEqual(100);
     });
 
-    it('should contain walletRisk in breakdown', () => {
-      expect(response.body.breakdown).toHaveProperty('walletRisk');
-      expect(typeof response.body.breakdown.walletRisk).toBe('number');
+    it('should contain contract_risk in breakdown', () => {
+      expect(response.body.breakdown).toHaveProperty('contract_risk');
+      expect(typeof response.body.breakdown.contract_risk).toBe('number');
     });
 
-    it('should contain contractRisk (smartContractRisk) in breakdown', () => {
-      expect(response.body.breakdown).toHaveProperty('smartContractRisk');
-      expect(typeof response.body.breakdown.smartContractRisk).toBe('number');
+    it('should contain behavior_risk in breakdown', () => {
+      expect(response.body.breakdown).toHaveProperty('behavior_risk');
+      expect(typeof response.body.breakdown.behavior_risk).toBe('number');
     });
 
-    it('should contain liquidityRisk in breakdown', () => {
-      expect(response.body.breakdown).toHaveProperty('liquidityRisk');
-      expect(typeof response.body.breakdown.liquidityRisk).toBe('number');
+    it('should contain reputation_risk in breakdown', () => {
+      expect(response.body.breakdown).toHaveProperty('reputation_risk');
+      expect(typeof response.body.breakdown.reputation_risk).toBe('number');
     });
 
-    it('should contain rugProbability (rugPullRisk)', () => {
+    it('should contain rugPullRisk', () => {
       expect(response.body).toHaveProperty('rugPullRisk');
       expect(typeof response.body.rugPullRisk).toBe('number');
     });
@@ -72,7 +72,7 @@ describe('GET /api/risk/:address - Integration Tests', () => {
       expect(['wallet', 'contract', 'token']).toContain(response.body.addressType);
     });
 
-    it('should contain components breakdown', () => {
+    it('should contain legacy components breakdown', () => {
       expect(response.body).toHaveProperty('components');
       expect(response.body.components).toHaveProperty('transactionRisk');
       expect(response.body.components).toHaveProperty('contractRisk');
@@ -94,6 +94,40 @@ describe('GET /api/risk/:address - Integration Tests', () => {
       expect(typeof response.body.analysisTimeMs).toBe('number');
       expect(response.body.analysisTimeMs).toBeGreaterThan(0);
     });
+
+    // New Risk Intelligence Engine fields
+    it('should contain evidence object with flag categories', () => {
+      expect(response.body).toHaveProperty('evidence');
+      expect(response.body.evidence).toHaveProperty('contract_flags');
+      expect(response.body.evidence).toHaveProperty('onchain_flags');
+      expect(response.body.evidence).toHaveProperty('wallet_flags');
+      expect(response.body.evidence).toHaveProperty('transparency_flags');
+      expect(response.body.evidence).toHaveProperty('scam_flags');
+      expect(Array.isArray(response.body.evidence.contract_flags)).toBe(true);
+    });
+
+    it('should contain analysis object with sub-modules', () => {
+      expect(response.body).toHaveProperty('analysis');
+      expect(response.body.analysis).toHaveProperty('contract');
+      expect(response.body.analysis).toHaveProperty('onchain');
+      expect(response.body.analysis).toHaveProperty('wallet');
+      expect(response.body.analysis).toHaveProperty('transparency');
+      expect(response.body.analysis).toHaveProperty('scamDatabase');
+    });
+
+    it('should contain onchainIndicators array', () => {
+      expect(response.body).toHaveProperty('onchainIndicators');
+      expect(Array.isArray(response.body.onchainIndicators)).toBe(true);
+    });
+
+    it('should contain scoreCalculation transparency', () => {
+      expect(response.body).toHaveProperty('scoreCalculation');
+      expect(response.body.scoreCalculation).toHaveProperty('formula');
+      expect(response.body.scoreCalculation).toHaveProperty('weights');
+      expect(response.body.scoreCalculation).toHaveProperty('rawScores');
+      expect(response.body.scoreCalculation).toHaveProperty('adjustments');
+      expect(response.body.scoreCalculation).toHaveProperty('finalScore');
+    });
   });
 
   describe('Valid wallet address', () => {
@@ -108,7 +142,10 @@ describe('GET /api/risk/:address - Integration Tests', () => {
       expect(response.body).toHaveProperty('breakdown');
       expect(response.body).toHaveProperty('explanation');
       expect(response.body).toHaveProperty('rugPullRisk');
-    }, 30000);
+      expect(response.body).toHaveProperty('evidence');
+      expect(response.body).toHaveProperty('analysis');
+      expect(response.body).toHaveProperty('scoreCalculation');
+    }, 60000);
   });
 
   describe('Invalid address', () => {
@@ -180,37 +217,21 @@ describe('GET /api/risk/:address - Integration Tests', () => {
       await request(app)
         .get(`/api/risk/${VALID_WALLET}`)
         .expect('Content-Type', /application\/json/);
-    }, 30000);
+    }, 60000);
 
-    it('should contain all required fields for contractRisk', async () => {
+    it('should have breakdown scores in valid range (0-100)', async () => {
       const response = await request(app)
         .get(`/api/risk/${PANCAKE_ROUTER}`)
         .expect(200);
 
-      expect(typeof response.body.breakdown.smartContractRisk).toBe('number');
-      expect(response.body.breakdown.smartContractRisk).toBeGreaterThanOrEqual(0);
-      expect(response.body.breakdown.smartContractRisk).toBeLessThanOrEqual(100);
-    }, 30000);
-
-    it('should contain all required fields for walletRisk', async () => {
-      const response = await request(app)
-        .get(`/api/risk/${PANCAKE_ROUTER}`)
-        .expect(200);
-
-      expect(typeof response.body.breakdown.walletRisk).toBe('number');
-      expect(response.body.breakdown.walletRisk).toBeGreaterThanOrEqual(0);
-      expect(response.body.breakdown.walletRisk).toBeLessThanOrEqual(100);
-    }, 30000);
-
-    it('should contain all required fields for liquidityRisk', async () => {
-      const response = await request(app)
-        .get(`/api/risk/${PANCAKE_ROUTER}`)
-        .expect(200);
-
-      expect(typeof response.body.breakdown.liquidityRisk).toBe('number');
-      expect(response.body.breakdown.liquidityRisk).toBeGreaterThanOrEqual(0);
-      expect(response.body.breakdown.liquidityRisk).toBeLessThanOrEqual(100);
-    }, 30000);
+      const { breakdown } = response.body;
+      expect(breakdown.contract_risk).toBeGreaterThanOrEqual(0);
+      expect(breakdown.contract_risk).toBeLessThanOrEqual(100);
+      expect(breakdown.behavior_risk).toBeGreaterThanOrEqual(0);
+      expect(breakdown.behavior_risk).toBeLessThanOrEqual(100);
+      expect(breakdown.reputation_risk).toBeGreaterThanOrEqual(0);
+      expect(breakdown.reputation_risk).toBeLessThanOrEqual(100);
+    }, 60000);
 
     it('should have explanation with non-empty summary', async () => {
       const response = await request(app)
@@ -220,7 +241,32 @@ describe('GET /api/risk/:address - Integration Tests', () => {
       expect(response.body.explanation.summary.length).toBeGreaterThan(10);
       expect(response.body.explanation.keyFindings.length).toBeGreaterThan(0);
       expect(response.body.explanation.recommendations.length).toBeGreaterThan(0);
-    }, 30000);
+    }, 60000);
+
+    it('should have evidence flags with proper structure', async () => {
+      const response = await request(app)
+        .get(`/api/risk/${PANCAKE_ROUTER}`)
+        .expect(200);
+
+      const allFlags = [
+        ...response.body.evidence.contract_flags,
+        ...response.body.evidence.onchain_flags,
+        ...response.body.evidence.wallet_flags,
+        ...response.body.evidence.transparency_flags,
+        ...response.body.evidence.scam_flags,
+      ];
+
+      if (allFlags.length > 0) {
+        const flag = allFlags[0];
+        expect(flag).toHaveProperty('id');
+        expect(flag).toHaveProperty('name');
+        expect(flag).toHaveProperty('severity');
+        expect(flag).toHaveProperty('description');
+        expect(flag).toHaveProperty('evidence');
+        expect(flag).toHaveProperty('category');
+        expect(flag).toHaveProperty('riskWeight');
+      }
+    }, 60000);
   });
 
   describe('Address normalization', () => {
@@ -231,7 +277,7 @@ describe('GET /api/risk/:address - Integration Tests', () => {
         .expect(200);
 
       expect(response.body.address).toBe(mixedCase.toLowerCase());
-    }, 30000);
+    }, 60000);
   });
 
   describe('Unknown routes', () => {

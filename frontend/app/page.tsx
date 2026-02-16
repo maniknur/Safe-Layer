@@ -10,10 +10,10 @@ import HolderAnalysisPanel from '@/components/HolderAnalysisPanel'
 import AuditPanel from '@/components/AuditPanel'
 import RadarChart from '@/components/RadarChart'
 import OnChainIndicatorsTable from '@/components/OnChainIndicatorsTable'
+import RegistryStatus from '@/components/RegistryStatus'
 import type { RiskData, SearchHistoryItem } from '@/lib/types'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
-const FETCH_TIMEOUT_MS = 60_000 // 60s for deeper analysis
 
 type TabKey = 'overview' | 'evidence' | 'formula' | 'onchain' | 'wallet' | 'transparency' | 'scam'
 
@@ -31,7 +31,7 @@ export default function Home() {
     setActiveTab('overview')
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+    const timeout = setTimeout(() => controller.abort(), 60_000)
 
     try {
       const response = await fetch(
@@ -44,13 +44,13 @@ export default function Home() {
         throw new Error(data.message || 'Invalid address format')
       }
       if (response.status === 429) {
-        throw new Error('Too many requests. Please wait a moment and try again.')
+        throw new Error('Too many requests. Please wait a moment.')
       }
       if (response.status === 404) {
-        throw new Error('API endpoint not found. Make sure the backend is running.')
+        throw new Error('Backend not reachable. Is the server running?')
       }
       if (!response.ok) {
-        throw new Error(`Server error (${response.status}). Please try again later.`)
+        throw new Error(`Server error (${response.status})`)
       }
 
       const data: RiskData = await response.json()
@@ -76,9 +76,9 @@ export default function Home() {
     } catch (err) {
       if (err instanceof Error) {
         if (err.name === 'AbortError') {
-          setError('Request timed out. The server may be busy - please try again.')
+          setError('Request timed out. Please try again.')
         } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-          setError('Cannot connect to backend. Make sure the server is running on ' + BACKEND_URL)
+          setError('Cannot connect to backend at ' + BACKEND_URL)
         } else {
           setError(err.message)
         }
@@ -91,239 +91,194 @@ export default function Home() {
     }
   }, [])
 
-  const handleRetry = () => {
-    if (riskData?.address) {
-      handleAnalyze(riskData.address)
-    }
-  }
-
-  // Count evidence flags
   const evidenceCount = riskData?.evidence
     ? Object.values(riskData.evidence).flat().filter(f => f.severity !== 'info').length
     : 0
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        {/* Hero Section */}
-        <div className="mb-12">
-          <h2 className="text-4xl sm:text-5xl font-light text-slate-900 dark:text-white mb-4 tracking-tight">
-            Risk Intelligence
-          </h2>
-          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed font-light">
-            Evidence-based risk analysis for BNB Chain. Every risk score is backed by
-            on-chain proof, smart contract analysis, and transparent scoring.
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      {/* Search */}
+      <div className="mb-8">
+        <RiskAnalyzer onAnalyze={handleAnalyze} loading={loading} searchHistory={searchHistory} />
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 rounded-lg p-4 mb-6" role="alert">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
+            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 text-lg leading-none" aria-label="Dismiss">
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div className="flex flex-col items-center py-20" role="status">
+          <svg className="animate-spin h-6 w-6 text-slate-400 dark:text-slate-500 mb-4" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <p className="text-slate-600 dark:text-slate-400 text-sm">Analyzing address...</p>
+          <p className="text-slate-400 dark:text-slate-600 text-xs mt-1">Checking contract, on-chain data, and scam databases</p>
+        </div>
+      )}
+
+      {/* Results */}
+      {riskData && !loading && (
+        <div className="space-y-5">
+          {/* Meta bar */}
+          <div className="flex justify-between items-center text-xs text-slate-400 dark:text-slate-500">
+            <span>Completed in {riskData.analysisTimeMs}ms</span>
+            <button
+              onClick={() => handleAnalyze(riskData.address)}
+              className="hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1.5 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Re-analyze
+            </button>
+          </div>
+
+          {/* Score + Radar */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div className="lg:col-span-2">
+              <RiskCard data={riskData} />
+            </div>
+            <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 flex flex-col items-center justify-center">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Risk Breakdown</p>
+              {riskData.breakdown && (
+                <RadarChart breakdown={riskData.breakdown} size={200} />
+              )}
+            </div>
+          </div>
+
+          {/* On-Chain Registry Status */}
+          {riskData.registry && (
+            <RegistryStatus registry={riskData.registry} />
+          )}
+
+          {/* Tabs */}
+          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="flex overflow-x-auto border-b border-slate-200 dark:border-slate-800">
+              <TabButton label="Overview" isActive={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
+              <TabButton label="Evidence" isActive={activeTab === 'evidence'} onClick={() => setActiveTab('evidence')} badge={evidenceCount} />
+              <TabButton label="On-Chain" isActive={activeTab === 'onchain'} onClick={() => setActiveTab('onchain')} />
+              <TabButton label="Wallet" isActive={activeTab === 'wallet'} onClick={() => setActiveTab('wallet')} />
+              <TabButton label="Transparency" isActive={activeTab === 'transparency'} onClick={() => setActiveTab('transparency')} />
+              <TabButton label="Scam DB" isActive={activeTab === 'scam'} onClick={() => setActiveTab('scam')} />
+              <TabButton label="Formula" isActive={activeTab === 'formula'} onClick={() => setActiveTab('formula')} />
+            </div>
+
+            <div className="p-6 sm:p-8">
+              {activeTab === 'overview' && (
+                <div className="space-y-6">
+                  {/* Category breakdown */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <BreakdownCard label="Contract" value={riskData.breakdown?.contract_risk ?? 0} weight="40%" color="text-purple-600 dark:text-purple-400" />
+                    <BreakdownCard label="Behavior" value={riskData.breakdown?.behavior_risk ?? 0} weight="40%" color="text-blue-600 dark:text-blue-400" />
+                    <BreakdownCard label="Reputation" value={riskData.breakdown?.reputation_risk ?? 0} weight="20%" color="text-amber-600 dark:text-amber-400" />
+                  </div>
+
+                  {/* Flags */}
+                  {riskData.flags && riskData.flags.length > 0 && (
+                    <div className="bg-amber-50 dark:bg-amber-950/20 rounded-md border border-amber-200 dark:border-amber-800/50 p-5">
+                      <h3 className="text-xs font-medium text-amber-800 dark:text-amber-300 uppercase tracking-wider mb-3">
+                        Risk Indicators ({riskData.flags.length})
+                      </h3>
+                      <ul className="space-y-1.5">
+                        {riskData.flags.slice(0, 8).map((flag, idx) => (
+                          <li key={idx} className="text-sm text-amber-900 dark:text-amber-200/80 flex items-start gap-2">
+                            <span className="text-amber-500 mt-0.5 shrink-0">&bull;</span>
+                            {flag}
+                          </li>
+                        ))}
+                        {riskData.flags.length > 8 && (
+                          <li className="text-xs text-amber-600 dark:text-amber-400 pt-1">
+                            +{riskData.flags.length - 8} more — see Evidence tab
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Summary */}
+                  {riskData.explanation && (
+                    <div className="space-y-4">
+                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                        {riskData.explanation.summary}
+                      </p>
+
+                      {riskData.explanation.keyFindings.length > 0 && (
+                        <div>
+                          <h4 className="text-[11px] text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-2">Key Findings</h4>
+                          <ul className="space-y-1">
+                            {riskData.explanation.keyFindings.map((f, i) => (
+                              <li key={i} className="text-sm text-slate-600 dark:text-slate-400 flex items-start gap-2">
+                                <span className="text-slate-300 dark:text-slate-600 mt-0.5 shrink-0">&bull;</span>
+                                {f}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {riskData.explanation.recommendations.length > 0 && (
+                        <div>
+                          <h4 className="text-[11px] text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-2">Recommendations</h4>
+                          <ul className="space-y-1">
+                            {riskData.explanation.recommendations.map((r, i) => (
+                              <li key={i} className="text-sm text-slate-600 dark:text-slate-400 flex items-start gap-2">
+                                <span className="text-green-500 dark:text-green-600 mt-0.5 shrink-0">&bull;</span>
+                                {r}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'evidence' && <EvidencePanel data={riskData} />}
+              {activeTab === 'onchain' && <OnChainIndicatorsTable indicators={riskData.onchainIndicators || []} />}
+              {activeTab === 'wallet' && <HolderAnalysisPanel data={riskData} />}
+              {activeTab === 'transparency' && <GitHubPanel data={riskData} />}
+              {activeTab === 'scam' && <AuditPanel data={riskData} />}
+              {activeTab === 'formula' && <FormulaBreakdown data={riskData} />}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!riskData && !loading && !error && (
+        <div className="text-center py-20">
+          <p className="text-slate-400 dark:text-slate-500 text-sm">
+            Paste any BNB Chain address above to see its risk profile.
           </p>
         </div>
-
-        {/* Analyzer */}
-        <div className="mb-12">
-          <RiskAnalyzer onAnalyze={handleAnalyze} loading={loading} searchHistory={searchHistory} />
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-8" role="alert">
-            <div className="flex items-start justify-between gap-4">
-              <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
-              <button onClick={() => setError(null)} className="text-red-600 dark:text-red-400 hover:text-red-700 shrink-0 text-sm" aria-label="Dismiss error">
-                &times;
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Loading */}
-        {loading && (
-          <div className="flex flex-col justify-center items-center py-16" role="status" aria-live="polite">
-            <div className="animate-pulse">
-              <div className="h-8 w-8 bg-slate-300 dark:bg-slate-700 rounded-full mb-4" />
-            </div>
-            <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">Running deep analysis</p>
-            <p className="text-slate-500 dark:text-slate-500 text-xs mt-2">Scanning contract, on-chain behavior, wallet history, and scam databases...</p>
-          </div>
-        )}
-
-        {/* Results */}
-        {riskData && !loading && (
-          <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Re-analyze Button */}
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span>Analyzed in {riskData.analysisTimeMs}ms</span>
-              </div>
-              <button
-                onClick={handleRetry}
-                className="text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-2 py-1"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Re-analyze
-              </button>
-            </div>
-
-            {/* Risk Card + Radar Chart */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <RiskCard data={riskData} />
-              </div>
-              <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 flex flex-col items-center justify-center">
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-4">Risk Breakdown</p>
-                {riskData.breakdown && (
-                  <RadarChart breakdown={riskData.breakdown} size={200} />
-                )}
-              </div>
-            </div>
-
-            {/* Tabbed Interface */}
-            <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
-              {/* Tab Navigation */}
-              <div className="flex overflow-x-auto border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                <TabButton label="Overview" isActive={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
-                <TabButton label="Evidence" isActive={activeTab === 'evidence'} onClick={() => setActiveTab('evidence')} badge={evidenceCount} />
-                <TabButton label="On-Chain" isActive={activeTab === 'onchain'} onClick={() => setActiveTab('onchain')} />
-                <TabButton label="Wallet" isActive={activeTab === 'wallet'} onClick={() => setActiveTab('wallet')} />
-                <TabButton label="Transparency" isActive={activeTab === 'transparency'} onClick={() => setActiveTab('transparency')} />
-                <TabButton label="Scam DB" isActive={activeTab === 'scam'} onClick={() => setActiveTab('scam')} />
-                <TabButton label="Formula" isActive={activeTab === 'formula'} onClick={() => setActiveTab('formula')} />
-              </div>
-
-              {/* Tab Content */}
-              <div className="p-6 sm:p-8">
-                {/* Overview */}
-                {activeTab === 'overview' && (
-                  <div className="space-y-7">
-                    {/* Category Breakdown Cards */}
-                    <div>
-                      <h3 className="text-sm font-medium text-slate-900 dark:text-white uppercase tracking-wide mb-4">Risk Categories</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <BreakdownCard label="Contract Risk" value={riskData.breakdown?.contract_risk ?? 0} weight="40%" color="text-purple-600 dark:text-purple-400" />
-                        <BreakdownCard label="Behavior Risk" value={riskData.breakdown?.behavior_risk ?? 0} weight="40%" color="text-blue-600 dark:text-blue-400" />
-                        <BreakdownCard label="Reputation Risk" value={riskData.breakdown?.reputation_risk ?? 0} weight="20%" color="text-amber-600 dark:text-amber-400" />
-                      </div>
-                    </div>
-
-                    {/* Risk Flags Summary */}
-                    {riskData.flags && riskData.flags.length > 0 && (
-                      <div className="bg-amber-50 dark:bg-amber-950/20 rounded-md border border-amber-200 dark:border-amber-800 p-5">
-                        <h3 className="text-xs font-semibold text-amber-900 dark:text-amber-200 uppercase tracking-wide mb-3">
-                          Key Risk Indicators ({riskData.flags.length})
-                        </h3>
-                        <ul className="space-y-2">
-                          {riskData.flags.slice(0, 8).map((flag, idx) => (
-                            <li key={`flag-${idx}`} className="flex items-start gap-3 text-sm text-amber-900 dark:text-amber-200 font-light">
-                              <span className="text-amber-600 dark:text-amber-400 mt-0.5 shrink-0 font-bold">-</span>
-                              {flag}
-                            </li>
-                          ))}
-                          {riskData.flags.length > 8 && (
-                            <li className="text-xs text-amber-700 dark:text-amber-300">
-                              + {riskData.flags.length - 8} more flags. View the Evidence tab for details.
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Explanation */}
-                    {riskData.explanation && (
-                      <div className="bg-slate-50 dark:bg-slate-800/30 rounded-md border border-slate-200 dark:border-slate-700 p-6">
-                        <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-5 uppercase tracking-wide">Analysis</h3>
-                        <div className="space-y-5">
-                          <div>
-                            <h4 className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Summary</h4>
-                            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-light">{riskData.explanation.summary}</p>
-                          </div>
-                          {riskData.explanation.keyFindings.length > 0 && (
-                            <div>
-                              <h4 className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Key Findings</h4>
-                              <ul className="space-y-1.5">
-                                {riskData.explanation.keyFindings.map((finding, idx) => (
-                                  <li key={`finding-${idx}`} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300 font-light">
-                                    <span className="text-slate-400 mt-1 shrink-0">-</span>
-                                    {finding}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          {riskData.explanation.recommendations.length > 0 && (
-                            <div>
-                              <h4 className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Recommendations</h4>
-                              <ul className="space-y-1.5">
-                                {riskData.explanation.recommendations.map((rec, idx) => (
-                                  <li key={`rec-${idx}`} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300 font-light">
-                                    <span className="text-green-600 dark:text-green-500 mt-0.5 shrink-0">-</span>
-                                    {rec}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Evidence Tab */}
-                {activeTab === 'evidence' && <EvidencePanel data={riskData} />}
-
-                {/* On-Chain Tab */}
-                {activeTab === 'onchain' && (
-                  <OnChainIndicatorsTable indicators={riskData.onchainIndicators || []} />
-                )}
-
-                {/* Wallet Tab */}
-                {activeTab === 'wallet' && <HolderAnalysisPanel data={riskData} />}
-
-                {/* Transparency Tab */}
-                {activeTab === 'transparency' && <GitHubPanel data={riskData} />}
-
-                {/* Scam DB Tab */}
-                {activeTab === 'scam' && <AuditPanel data={riskData} />}
-
-                {/* Formula Tab */}
-                {activeTab === 'formula' && <FormulaBreakdown data={riskData} />}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!riskData && !loading && !error && (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
-              <svg className="w-8 h-8 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <p className="text-slate-600 dark:text-slate-400 text-lg mb-2">
-              Enter a wallet or contract address to begin
-            </p>
-            <p className="text-slate-500 dark:text-slate-500 text-sm">
-              SafeLayer provides evidence-based risk intelligence with transparent scoring
-            </p>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   )
 }
 
 function BreakdownCard({ label, value, weight, color }: { label: string; value: number; weight: string; color: string }) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800 p-5">
+    <div className="bg-slate-50 dark:bg-slate-800/40 rounded-md border border-slate-200 dark:border-slate-700/50 p-4">
       <div className="flex items-center justify-between mb-1">
-        <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase">{label}</h3>
-        <span className="text-[10px] text-slate-500 dark:text-slate-500">{weight}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">{label}</span>
+        <span className="text-[10px] text-slate-400 dark:text-slate-600">{weight}</span>
       </div>
-      <div className="flex items-end gap-2">
-        <p className={`text-3xl font-light ${color}`}>{value}</p>
-        <span className="text-xs text-slate-500 dark:text-slate-500 mb-1">/ 100</span>
+      <div className="flex items-end gap-1.5">
+        <span className={`text-2xl font-light ${color}`}>{value}</span>
+        <span className="text-xs text-slate-400 dark:text-slate-600 mb-0.5">/ 100</span>
       </div>
-      <div className="mt-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
+      <div className="mt-2.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1 overflow-hidden">
         <div
           className={`h-full ${getGaugeColor(value)} transition-all duration-500`}
           style={{ width: `${value}%` }}
@@ -345,15 +300,15 @@ function TabButton({ label, isActive, onClick, badge }: { label: string; isActiv
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-3 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+      className={`px-4 py-3 text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
         isActive
-          ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white'
-          : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white font-medium'
+          : 'border-transparent text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
       }`}
     >
       {label}
       {badge !== undefined && badge > 0 && (
-        <span className="ml-1 px-2 py-0.5 bg-amber-600 dark:bg-amber-700 text-white text-xs rounded-full font-light">
+        <span className="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-[10px] rounded-full font-medium">
           {badge}
         </span>
       )}

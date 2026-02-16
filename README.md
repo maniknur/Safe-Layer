@@ -1,567 +1,229 @@
-# SafeLayer BNB - AI-Powered Risk Intelligence Engine
+# SafeLayer — Explainable Risk Intelligence for BNB Chain
 
-**SafeLayer BNB** is a full-stack, AI-powered risk intelligence engine designed to analyze wallet addresses and smart contracts on the BNB Chain. It provides comprehensive risk scores, detailed breakdowns, and actionable insights.
-
-Built for the BNB Chain Risk Intelligence Hackathon.
+SafeLayer is an evidence-based risk analysis platform for BNB Smart Chain. It evaluates wallet addresses and smart contracts using on-chain data, producing transparent risk scores with full formula disclosure and immutable on-chain proof via a registry contract.
 
 ---
 
-## ⚡ Quick Start
+## Problem Statement
 
-### 1. Docker (Recommended)
-```bash
-docker-compose up --build
-```
-Visit: http://localhost:3000
+Web3 users regularly interact with unverified smart contracts and unknown wallet addresses on BNB Chain. Existing tools provide opaque risk ratings with no explanation of how scores are derived, making it impossible to verify their accuracy or understand the underlying risk factors.
 
-### 2. Manual Setup
-```bash
-bash setup.sh
-# Terminal 1: cd backend && npm run dev
-# Terminal 2: cd frontend && npm run dev
-```
-
-**[📖 Full Quick Start Guide →](QUICKSTART.md)**
+This lack of transparency leads to:
+- Users blindly trusting or dismissing risk scores
+- No way to audit or reproduce risk assessments
+- No immutable record of when a risk assessment was performed
 
 ---
 
-## 🎯 Features
+## Solution
 
-✅ **Wallet Risk Analysis** - Transaction history, account age, behavioral patterns  
-✅ **Smart Contract Security** - Vulnerability detection, verification status  
-✅ **Liquidity Analysis** - Pool health, token distribution, rug pull risks  
-✅ **AI Explanations** - Human-readable summaries and recommendations  
-✅ **Real-time Risk Scoring** - Aggregated risk from multiple factors  
-✅ **Modern UI** - Clean, responsive interface with TailwindCSS  
-✅ **Production Ready** - Logging, error handling, tests, Docker support  
+SafeLayer provides a **fully explainable** risk analysis pipeline:
+
+1. **Evidence-Based Scoring** — Every risk flag includes severity, description, data source, and a link to verify on BscScan
+2. **Formula Transparency** — The exact formula, weights, raw scores, and any adjustments are returned to the user
+3. **On-Chain Proof** — Each analysis result is hashed (keccak256) and submitted to a registry contract on BNB Chain, creating an immutable, timestamped proof
 
 ---
 
-## 🏗️ Architecture
+## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Frontend (Next.js)                   │
-│   - React Components (TypeScript)                       │
-│   - TailwindCSS Styling                                │
-│   - Axios HTTP Client                                  │
-│   → http://localhost:3000                              │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-                       ↓ API Calls (/api/risk/:address)
-                       │
-┌──────────────────────┴──────────────────────────────────┐
-│              Backend (Express/Node.js)                  │
-│                                                          │
-│  ┌─────────────────────────────────────────────────┐  │
-│  │  API Routes                                     │  │
-│  │  - GET /health                                 │  │
-│  │  - GET /api/risk/:address                      │  │
-│  └────────────────┬────────────────────────────────┘  │
-│                   │                                     │
-│  ┌────────────────┴────────────────────────────────┐  │
-│  │  Risk Modules                                   │  │
-│  ├─ scanner/       → Smart contract analysis      │  │
-│  ├─ wallet/        → Wallet behavior analysis     │  │
-│  ├─ liquidity/     → Liquidity assessment         │  │
-│  ├─ aggregator/    → Risk score aggregation       │  │
-│  └─ ai/            → Explanation generation       │  │
-│                                                     │  │
-│  → http://localhost:3001                           │  │
-└──────────────────┬────────────────────────────────────┘
-                   │
-        ┌──────────┴──────────┬──────────┐
-        ↓                    ↓          ↓
-   ┌────────┐          ┌──────────┐  ┌────────┐
-   │ BNB    │          │PostgreSQL│  │ Logs   │
-   │  RPC   │          │Database  │  │Storage │
-   │(Mock)  │          │(Optional)│  │        │
-   └────────┘          └──────────┘  └────────┘
+User
+  |
+  v
+[Next.js Frontend]  ──>  [Express Backend API]
+                              |
+                    +---------+---------+
+                    |         |         |
+               [Contract] [Behavior] [Reputation]
+               Analysis   Analysis    Analysis
+                    |         |         |
+                    +----+----+----+----+
+                         |         |
+                    [Risk Engine]  |
+                    Aggregation   |
+                         |        |
+                    [Score + Evidence + Explanation]
+                         |
+                    [Registry Service]
+                         |
+                    [SafeLayerRegistry.sol]
+                    BNB Chain Testnet
 ```
+
+**Analysis Modules:**
+
+| Module | What it checks |
+|--------|---------------|
+| Contract Analyzer | Source verification, owner privileges, mint/burn, proxy patterns, honeypot logic, selfdestruct |
+| Behavior Analyzer | Transaction volume, holder concentration, DEX pair presence, liquidity, contract age, rug pull indicators |
+| Wallet History | Deployer history, linked rugpulls, fund flow, account age, balance |
+| Transparency | GitHub activity, audit reports, team doxxing status |
+| Scam Database | Blacklists, known scam addresses, rugpull history |
 
 ---
 
-## 📦 Tech Stack
+## Risk Formula
 
-### Frontend
-- **Framework**: Next.js 14 with TypeScript
-- **Styling**: TailwindCSS 3
-- **HTTP**: Axios
-- **Web3**: Ethers.js
+```
+Risk Score = (Contract Risk x 0.40) + (Behavior Risk x 0.40) + (Reputation Risk x 0.20)
+```
 
-### Backend
-- **Runtime**: Node.js with TypeScript
-- **Framework**: Express.js
-- **Blockchain**: Ethers.js (for future integrations)
-- **Database**: PostgreSQL (optional, mocked for MVP)
-- **Logging**: Winston
-- **Testing**: Jest
+**Floor rules** guarantee minimum scores when critical signals are detected:
+- Critical severity flag detected → minimum score 70
+- Known scam database match → minimum score 85
+- Linked to known rugpull → minimum score 80
+- 3+ high severity flags → minimum score 60
 
-### DevOps
-- **Containerization**: Docker & Docker Compose
-- **CI/CD**: GitHub Actions
-- **Environment**: dotenv
+**Risk Levels:**
+
+| Score | Level |
+|-------|-------|
+| 0–19 | Very Low |
+| 20–39 | Low |
+| 40–59 | Medium |
+| 60–79 | High |
+| 80–100 | Very High |
+
+All weights, raw scores, and adjustments are included in every API response under `scoreCalculation`.
 
 ---
 
-## 📂 Project Structure
+## On-Chain Registry Contract
 
-```
-safelayer-bnb/
-├── frontend/                      # Next.js frontend
-│   ├── app/
-│   │   ├── page.tsx              # Main analyzer page
-│   │   ├── layout.tsx            # Root layout
-│   │   └── globals.css           # Global styles
-│   ├── components/               # React components
-│   │   ├── RiskAnalyzer.tsx
-│   │   └── RiskCard.tsx
-│   ├── lib/                      # Utilities
-│   │   └── utils.ts             # Address validation
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── next.config.js
-│   ├── tailwind.config.ts
-│   └── Dockerfile
-│
-├── backend/                       # Express API
-│   ├── src/
-│   │   ├── index.ts              # Server entry
-│   │   ├── routes/
-│   │   │   └── risk.ts           # /api/risk endpoints
-│   │   ├── modules/
-│   │   │   ├── scanner/          # Smart contracts
-│   │   │   ├── wallet/           # Wallet analysis
-│   │   │   ├── liquidity/        # Liquidity checks
-│   │   │   ├── aggregator/       # Risk scoring
-│   │   │   └── ai/               # Explanations
-│   │   ├── utils/
-│   │   │   ├── logger.ts         # Winston logger
-│   │   │   └── validation.ts     # Address validation
-│   │   └── __tests__/            # Unit tests
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── jest.config.js
-│   └── Dockerfile
-│
-├── .github/workflows/
-│   └── ci-cd.yml                 # GitHub Actions
-│
-├── docker-compose.yml            # Docker compose
-├── package.json                  # Monorepo root
-├── .env.example                  # Environment template
-├── .gitignore
-├── Makefile                      # Common commands
-├── setup.sh                      # Auto setup script
-│
-├── README.md                     # This file
-├── QUICKSTART.md                 # 5-minute setup
-├── API.md                        # API documentation
-├── DOCKER.md                     # Docker guide
-├── DEVELOPMENT.md                # Dev guide
-├── DEPLOYMENT.md                 # Production guide
-├── CONTRIBUTING.md               # Contribution guide
-└── CHANGELOG.md                  # Version history
-```
+| Field | Value |
+|-------|-------|
+| Contract | `SafeLayerRegistry` (Ownable2Step) |
+| Address | [`0x20B28a7b961a6d82222150905b0C01256607B5A3`](https://testnet.bscscan.com/address/0x20B28a7b961a6d82222150905b0C01256607B5A3#code) |
+| Network | BNB Smart Chain Testnet |
+| Chain ID | 97 |
+| Deployer | `0x24557aD7e2d5D8699c8696383E037678C7644411` |
+| Verified | Yes (BscScan) |
+
+**Key functions:**
+- `submitRiskReport(address, uint8, RiskLevel, bytes32)` — stores hashed proof on-chain (onlyAnalyzer)
+- `submitBatchReports(...)` — batch submission, saves ~21k gas per additional report
+- `getLatestReportForTarget(address)` — retrieve the most recent report
+- `getReportsByTarget(address)` — all report indices for an address
+- `approvedAnalyzers(address)` — check analyzer authorization
+
+**Gas optimizations:** custom errors, struct packing, unchecked loop increments, storage pointers, 2-step ownership transfer.
 
 ---
 
-## 🚀 Getting Started
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 14, React, TypeScript, Tailwind CSS |
+| Backend | Node.js, Express, TypeScript, ethers.js v6 |
+| Smart Contract | Solidity 0.8.20, OpenZeppelin, Hardhat |
+| Data Sources | BNB Chain RPC, BscScan API, PancakeSwap V2 Factory |
+| Testing | Jest |
+
+---
+
+## Getting Started
 
 ### Prerequisites
 - Node.js 18+
-- Docker & Docker Compose (recommended)
-- npm or yarn
+- npm
 
 ### Installation
 
-**Option A: Docker (Fastest)**
 ```bash
-docker-compose up --build
-# Visit http://localhost:3000 automatically
+# Clone and install all workspaces
+npm install --workspaces
 ```
 
-**Option B: Manual**
-```bash
-# Install deps
-cd backend && npm install
-cd ../frontend && npm install
-
-# Create env files
-cp .env.example backend/.env
-echo "NEXT_PUBLIC_BACKEND_URL=http://localhost:3001" > frontend/.env.local
-
-# Terminal 1
-cd backend && npm run dev
-
-# Terminal 2
-cd frontend && npm run dev
-```
-
-### Verify Installation
+### Run Locally
 
 ```bash
-# Health check
-curl http://localhost:3001/health
-
-# Analyze an address
-curl "http://localhost:3001/api/risk/0x1234567890123456789012345678901234567890"
-```
-
-Visit http://localhost:3000 and try the UI!
-
----
-
-## 📡 API Endpoints
-
-### Health Check
-```
-GET /health
-```
-Returns server status and uptime.
-
-### Risk Analysis
-```
-GET /api/risk/:address
-```
-Analyzes wallet risk. Returns:
-- Overall risk score (0-100)
-- Risk level (Very Low, Low, Medium, High, Very High)
-- Breakdown by component
-- AI explanation
-
-**Example:**
-```bash
-curl "http://localhost:3001/api/risk/0x1234567890123456789012345678901234567890"
-```
-
-**Response:**
-```json
-{
-  "address": "0x123...",
-  "riskScore": 45,
-  "riskLevel": "Medium",
-  "breakdown": {
-    "walletRisk": 40,
-    "smartContractRisk": 30,
-    "liquidityRisk": 55
-  },
-  "components": {
-    "transactionRisk": 40,
-    "contractRisk": 30,
-    "liquidityRisk": 55,
-    "behavioralRisk": 25
-  },
-  "explanation": {
-    "summary": "Address shows moderate risk...",
-    "keyFindings": [...],
-    "recommendations": [...],
-    "riskFactors": [...]
-  },
-  "timestamp": "2024-02-16T10:30:00Z"
-}
-```
-
-**[📖 Full API Documentation →](API.md)**
-
----
-
-## 🧠 Risk Scoring Algorithm
-
-SafeLayer uses a **weighted aggregation model**:
-
-| Component | Weight | Description |
-|-----------|--------|-------------|
-| Wallet Risk | 30% | Transaction history, account age, balance |
-| Smart Contract Risk | 25% | Verification status, vulnerabilities |
-| Liquidity Risk | 25% | Pool health, token distribution |
-| Behavioral Risk | 20% | Transaction patterns, anomalies |
-
-### Risk Levels
-- **0-20**: Very Low ✅ - Safe address
-- **20-40**: Low ✅ - Acceptable profile
-- **40-60**: Medium ⚠️ - Caution advised
-- **60-80**: High ⚠️ - Significant risk
-- **80-100**: Very High ❌ - Extreme caution
-
----
-
-## 🧪 Testing
-
-### Run Tests
-```bash
+# Terminal 1 — Backend (port 3001)
 cd backend
-npm test                 # Run once
-npm test:watch          # Watch mode
-npm test:coverage       # With coverage report
+cp .env.example .env   # Add your BSCSCAN_API_KEY
+npm run dev
+
+# Terminal 2 — Frontend (port 3000)
+cd frontend
+npm run dev
 ```
 
-### Manual Testing
-```bash
-# Test health endpoint
-curl http://localhost:3001/health
+### Environment Variables (Backend)
 
-# Test risk analysis
-curl "http://localhost:3001/api/risk/0x1234567890123456789012345678901234567890"
+```env
+PORT=3001
+BSCSCAN_API_KEY=your_bscscan_api_key
+BNB_RPC_URL=https://data-seed-prebsc-1-s1.binance.org:8545/
+REGISTRY_CONTRACT_ADDRESS=0x20B28a7b961a6d82222150905b0C01256607B5A3
+ANALYZER_PRIVATE_KEY=          # Optional — enables on-chain submission
+```
 
-# In browser
-open http://localhost:3000
+### API Endpoints
+
+```
+GET  /health                         — Service health check
+GET  /api/risk/:address              — Full risk analysis with on-chain submission
+GET  /api/registry/info              — Registry contract status
+GET  /api/registry/:address          — Latest on-chain report for address
+GET  /api/registry/:address/history  — All on-chain reports for address
 ```
 
 ---
 
-## 🐳 Docker Setup
-
-### Commands
-
-```bash
-# Start all services
-docker-compose up
-
-# Start with rebuild
-docker-compose up --build
-
-# Start in background
-docker-compose up -d
-
-# Stop all services
-docker-compose down
-
-# View logs
-docker-compose logs -f
-
-# View backend logs
-docker-compose logs -f backend
-
-# Full reset (remove volumes)
-docker-compose down -v
-```
-
-Includes: Frontend, Backend, PostgreSQL database
-
-**[📖 Full Docker Guide →](DOCKER.md)**
-
----
-
-## 🔨 Development
-
-### Common Commands
+## Smart Contract Deployment
 
 ```bash
-# Frontend development
-cd frontend && npm run dev
+cd smart-contracts
+cp .env.example .env   # Add deployer key and BscScan API key
 
-# Backend development
-cd backend && npm run dev
-
-# Build for production
-npm run build
-
-# Run tests
-npm test
-
-# Type checking
-npm run type-check
-
-# Using Makefile
-make help           # Show all commands
-make install        # Install dependencies
-make dev            # Start dev servers
-make test           # Run tests
-make docker-up      # Start Docker
+npx hardhat compile
+npx hardhat run scripts/deploy.js --network bnbTestnet
 ```
 
-### Project Layout
-
-- **Modular architecture** - Each risk factor is a separate module
-- **Clean separation** - Frontend/backend clearly separated
-- **Type-safe** - Full TypeScript throughout
-- **Well-tested** - Jest tests for core logic
-- **Documented** - Comprehensive docs and comments
-
-**[📖 Full Development Guide →](DEVELOPMENT.md)**
-
----
-
-## 📚 Documentation
-
-| Document | Purpose |
-|----------|---------|
-| [QUICKSTART.md](QUICKSTART.md) | 5-minute setup guide |
-| [API.md](API.md) | API endpoint documentation |
-| [DEVELOPMENT.md](DEVELOPMENT.md) | Dev guide and architecture |
-| [DOCKER.md](DOCKER.md) | Docker setup and commands |
-| [DEPLOYMENT.md](DEPLOYMENT.md) | Production deployment |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
-
----
-
-## 🚀 Deployment
-
-### Quick Deploy
-
-**Heroku:**
+Verification:
 ```bash
-heroku create safelayer-bnb
-git push heroku main
+HARDHAT_NETWORK=bnbTestnet node scripts/verify.js testnet
 ```
 
-**Vercel (Frontend):**
-1. Push to GitHub
-2. Import in Vercel
-3. Set `NEXT_PUBLIC_BACKEND_URL` env var
-4. Deploy!
+---
 
-**Docker:**
-```bash
-docker build -t safelayer-bnb .
-docker run -p 3000:3000 -p 3001:3001 safelayer-bnb
-```
+## AI Usage Disclosure
 
-**[📖 Full Deployment Guide →](DEPLOYMENT.md)**
+This project was developed with assistance from **Claude** (Anthropic). AI was used for:
+
+- Code generation and refactoring across backend modules, frontend components, and smart contracts
+- Debugging compilation errors, type mismatches, and deployment issues (BigInt serialization, Etherscan API v2 migration)
+- Architecture decisions (scoring formula weights, floor rules, module separation)
+- Gas optimization strategies for the Solidity contract
+
+All AI-generated code was reviewed, tested, and validated by the developer. The smart contract was deployed and verified on-chain by the developer's wallet.
 
 ---
 
-## 🔐 Security
+## Limitations
 
-- Express CORS configured
-- Input validation on all endpoints
-- No secrets in code (use .env)
-- SQL injection protection via parameterized queries
-- Rate limiting ready (add middleware)
-- Error messages don't leak internals
-
-For production:
-1. Use HTTPS/SSL
-2. Add API authentication
-3. Enable rate limiting
-4. Set up monitoring
-5. Regular security audits
+- **Testnet only** — currently deployed on BNB Testnet (chain ID 97), not mainnet
+- **No persistent database** — risk analysis results are cached in-memory (2 min TTL), not stored in a database
+- **BscScan rate limits** — free API tier limits concurrent requests; analysis may slow under heavy load
+- **Scam database is local** — uses a hardcoded list rather than a live external threat feed
+- **No token price data** — does not fetch real-time token prices or market cap
+- **Single analyzer** — the deployer wallet is the only approved analyzer; no multi-party verification
 
 ---
 
-## 📊 Monitoring & Logging
+## Future Improvements
 
-### Logs
-- **Combined**: `backend/logs/combined.log`
-- **Errors only**: `backend/logs/error.log`
-- **Real-time**: `docker-compose logs -f backend`
-
-### Log Levels
-- `error` - Critical issues
-- `warn` - Warnings
-- `info` - General info (default)
-- `debug` - Detailed debugging
-
-Set via `LOG_LEVEL` env var.
+- Mainnet deployment with multi-sig ownership
+- External scam database API integration (GoPlus, HashDit)
+- PostgreSQL persistence for analysis history and analytics
+- Token price and market cap integration via DEX aggregators
+- Multi-analyzer support with reputation scoring for analyzers
+- Browser extension for inline risk warnings on BscScan and DApps
+- Batch analysis dashboard for portfolio-level risk assessment
 
 ---
 
-## 🔄 CI/CD
+## License
 
-GitHub Actions automatically:
-- Runs tests on every push
-- Type-checks code
-- Builds Docker images
-- Can deploy to your server
-
-See `.github/workflows/ci-cd.yml`
-
----
-
-## 🎯 Roadmap
-
-### Phase 1 (Current MVP) ✅
-- [x] Basic risk scoring
-- [x] API endpoints
-- [x] Frontend UI
-- [x] Docker setup
-- [x] Tests
-- [x] Documentation
-
-### Phase 2 (Next Steps)
-- [ ] Real blockchain integration (RPC calls)
-- [ ] PostgreSQL persistence
-- [ ] Advanced risk heuristics
-- [ ] Caching (Redis)
-- [ ] User authentication
-- [ ] Historical tracking
-
-### Phase 3 (Future)
-- [ ] ML-based risk scoring
-- [ ] Multi-chain support
-- [ ] Browser extension
-- [ ] Mobile app
-- [ ] API webhooks
-- [ ] Batch analysis
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md)
-
-Quick steps:
-1. Fork the repo
-2. Create a branch (`git checkout -b feature/my-feature`)
-3. Make changes and test
-4. Submit a pull request
-
-Areas needing help:
-- Real blockchain data integration
-- Additional risk factors
-- UI/UX improvements
-- Performance optimization
-- Testing improvements
-
----
-
-## 📄 License
-
-MIT License - See [LICENSE](LICENSE) for details
-
----
-
-## ❓ FAQ
-
-**Q: Can I use real blockchain data?**
-A: Yes! Replace mock implementations with Ethers.js RPC calls. See [DEVELOPMENT.md](DEVELOPMENT.md)
-
-**Q: How do I add a new risk factor?**
-A: Create a new module in `backend/src/modules/`, integrate into aggregator. See [DEVELOPMENT.md](DEVELOPMENT.md)
-
-**Q: Is this production-ready?**
-A: MVP is hackathon-ready. For production, add auth, monitoring, caching, and real data sources.
-
-**Q: Can I deploy this?**
-A: Yes! See [DEPLOYMENT.md](DEPLOYMENT.md) for Heroku, AWS, DigitalOcean, etc.
-
-**Q: How do I test?**
-A: Any valid Ethereum address works (e.g., `0x1234567890123456789012345678901234567890`)
-
----
-
-## 📞 Support
-
-- 📖 Read the docs in `/docs`
-- 🐛 Report bugs in GitHub Issues
-- 💬 Ask questions in Discussions
-- Check existing code in `/modules` for examples
-
----
-
-## 🎉 Credit
-
-Built for the BNB Chain Risk Intelligence Hackathon.
-
-**Tech Stack:**
-- Frontend: Next.js, TailwindCSS, Axios
-- Backend: Express, TypeScript, Winston
-- DevOps: Docker, GitHub Actions
-- Blockchain: Ethers.js, BNB RPC
-
----
-
-**Happy hacking!** 🚀
-
-For quick start, run: `make help` or `bash setup.sh`
+MIT

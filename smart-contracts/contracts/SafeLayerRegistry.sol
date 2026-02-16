@@ -1,58 +1,76 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
+
 /**
  * @title SafeLayerRegistry
  * @notice Immutable on-chain registry for off-chain risk analysis proofs
- * @dev Stores hashed risk reports submitted by approved analyzers
- * 
- * This contract acts as a proof registry for SafeLayer's Web3 security analysis.
- * It does NOT calculate risk - it only stores immutable cryptographic proofs
- * of risk analysis performed off-chain.
+ * @dev Stores hashed risk reports submitted by approved analyzers only
+ *
+ * Security Model:
+ * - Only APPROVED analyzers can submit risk reports (onlyAnalyzer)
+ * - Only OWNER can approve/remove analyzers (onlyOwner via Ownable2Step)
+ * - 2-step ownership transfer prevents accidental loss of control
+ * - All writes are restricted - prevents data manipulation
+ *
+ * Gas Optimizations:
+ * - Custom errors instead of require strings (~200 gas saved per revert)
+ * - Struct packing: address(20)+uint8(1)+enum(1) = 22 bytes in 1 slot
+ * - Batch submit: multiple reports in 1 tx saves ~21000 base gas per extra report
+ * - unchecked loop increment
+ * - storage pointer in getLatestReportForTarget (avoids memory copy)
+ * - Optimizer enabled at 200 runs
  */
+contract SafeLayerRegistry is Ownable2Step {
 
-contract SafeLayerRegistry {
-    
-    /// @notice Maximum possible risk score
+    // ============== CUSTOM ERRORS (gas-efficient vs require strings) ==============
+
+    error NotAnalyzer();
+    error ZeroAddress();
+    error AlreadyApproved();
+    error NotApproved();
+    error ScoreOutOfRange();
+    error EmptyReportHash();
+    error RiskLevelMismatch();
+    error ReportIndexOutOfBounds();
+    error NoReportsForTarget();
+    error EmptyBatch();
+    error BatchTooLarge();
+    error ArrayLengthMismatch();
+
+    // ============== CONSTANTS ==============
+
     uint8 private constant MAX_RISK_SCORE = 100;
-    
-    /// @notice Enumeration for risk levels
+    uint8 private constant MAX_BATCH_SIZE = 50;
+
+    // ============== TYPES ==============
+
     enum RiskLevel {
         LOW,      // 0-33
         MEDIUM,   // 34-66
         HIGH      // 67-100
     }
-    
+
     /// @notice Struct representing a single risk report
+    /// @dev Packed: targetAddress(20) + riskScore(1) + riskLevel(1) = 22 bytes → slot 1
     struct RiskReport {
-        address targetAddress;      // Address being analyzed
-        uint8 riskScore;            // Risk score 0-100
-        RiskLevel riskLevel;        // Categorical risk level
-        bytes32 reportHash;         // Keccak256 hash of full JSON report
-        uint256 timestamp;          // Submission timestamp (block.timestamp)
-        address analyzer;           // Address of approved analyzer that submitted
+        address targetAddress;
+        uint8 riskScore;
+        RiskLevel riskLevel;
+        bytes32 reportHash;
+        uint256 timestamp;
+        address analyzer;
     }
-    
-    /// @notice All reports submitted to the registry (private)
+
+    // ============== STATE ==============
+
     RiskReport[] private reports;
-    
-    /// @notice Mapping: target address => array of report indices
-    /// Allows efficient lookup of all reports for a specific address
     mapping(address => uint256[]) private reportsByTarget;
-    
-    /// @notice Mapping: approved analyzer addresses
     mapping(address => bool) public approvedAnalyzers;
-    
-    /// @notice Contract owner address
-    address public owner;
-    
-    /// @notice Event: Emitted when a new risk report is submitted
-    /// @param targetAddress The address analyzed
-    /// @param riskScore The numerical risk score
-    /// @param riskLevel The categorical risk level
-    /// @param reportHash The keccak256 hash of the full report
-    /// @param analyzer The analyzer address that submitted the report
-    /// @param timestamp The block timestamp of submission
+
+    // ============== EVENTS ==============
+
     event RiskReportSubmitted(
         address indexed targetAddress,
         uint8 riskScore,
@@ -61,104 +79,118 @@ contract SafeLayerRegistry {
         address indexed analyzer,
         uint256 timestamp
     );
-    
-    /// @notice Event: Emitted when an analyzer is approved
+
     event AnalyzerApproved(address indexed analyzer);
-    
-    /// @notice Event: Emitted when an analyzer is removed
     event AnalyzerRemoved(address indexed analyzer);
-    
-    /// @notice Modifier: Restrict function to contract owner
-    modifier onlyOwner() {
-        require(msg.sender == owner, "SafeLayerRegistry: Only owner can call this function");
-        _;
-    }
-    
-    /// @notice Modifier: Restrict function to approved analyzers
+
+    // ============== MODIFIERS ==============
+
     modifier onlyAnalyzer() {
-        require(approvedAnalyzers[msg.sender], "SafeLayerRegistry: Only approved analyzers can submit reports");
+        if (!approvedAnalyzers[msg.sender]) revert NotAnalyzer();
         _;
     }
-    
-    /// @notice Constructor: Initialize contract owner
+
+    // ============== CONSTRUCTOR ==============
+
+    /// @notice Deployer becomes owner + first approved analyzer
     constructor() {
-        owner = msg.sender;
         approvedAnalyzers[msg.sender] = true;
+        emit AnalyzerApproved(msg.sender);
     }
-    
+
     // ============== ADMIN FUNCTIONS ==============
-    
-    /// @notice Approve an analyzer address to submit reports
-    /// @param analyzerAddress The address to approve
-    /// @dev Only callable by contract owner
-    function approveAnalyzer(address analyzerAddress) external onlyOwner {
-        require(analyzerAddress != address(0), "SafeLayerRegistry: Cannot approve zero address");
-        require(!approvedAnalyzers[analyzerAddress], "SafeLayerRegistry: Analyzer already approved");
-        
-        approvedAnalyzers[analyzerAddress] = true;
-        emit AnalyzerApproved(analyzerAddress);
+
+    /// @notice Approve an analyzer address to submit risk reports
+    /// @param analyzer The address to approve
+    function approveAnalyzer(address analyzer) external onlyOwner {
+        if (analyzer == address(0)) revert ZeroAddress();
+        if (approvedAnalyzers[analyzer]) revert AlreadyApproved();
+
+        approvedAnalyzers[analyzer] = true;
+        emit AnalyzerApproved(analyzer);
     }
-    
+
     /// @notice Remove approval from an analyzer address
-    /// @param analyzerAddress The address to remove
-    /// @dev Only callable by contract owner
-    function removeAnalyzer(address analyzerAddress) external onlyOwner {
-        require(approvedAnalyzers[analyzerAddress], "SafeLayerRegistry: Analyzer not approved");
-        
-        approvedAnalyzers[analyzerAddress] = false;
-        emit AnalyzerRemoved(analyzerAddress);
+    /// @param analyzer The address to revoke
+    function removeAnalyzer(address analyzer) external onlyOwner {
+        if (!approvedAnalyzers[analyzer]) revert NotApproved();
+
+        approvedAnalyzers[analyzer] = false;
+        emit AnalyzerRemoved(analyzer);
     }
-    
+
     // ============== CORE FUNCTIONS ==============
-    
-    /// @notice Submit a risk report to the registry
+
+    /// @notice Submit a single risk report
     /// @param targetAddress The address being analyzed
     /// @param riskScore Numerical risk score (0-100)
-    /// @param riskLevel Categorical risk level
+    /// @param riskLevel Categorical risk level (must match score range)
     /// @param reportHash Keccak256 hash of full JSON report
-    /// @dev Only approved analyzers can submit
-    /// @dev Validates inputs before storing
     function submitRiskReport(
         address targetAddress,
         uint8 riskScore,
         RiskLevel riskLevel,
         bytes32 reportHash
     ) external onlyAnalyzer {
-        // Validation: non-zero target address
-        require(targetAddress != address(0), "SafeLayerRegistry: Target address cannot be zero");
-        
-        // Validation: risk score must be 0-100
-        require(riskScore <= MAX_RISK_SCORE, "SafeLayerRegistry: Risk score must be <= 100");
-        
-        // Validation: non-zero report hash
-        require(reportHash != bytes32(0), "SafeLayerRegistry: Report hash cannot be zero");
-        
-        // Validate risk level matches risk score range
-        if (riskScore <= 33) {
-            require(riskLevel == RiskLevel.LOW, "SafeLayerRegistry: Risk level mismatch (LOW: 0-33)");
-        } else if (riskScore <= 66) {
-            require(riskLevel == RiskLevel.MEDIUM, "SafeLayerRegistry: Risk level mismatch (MEDIUM: 34-66)");
-        } else {
-            require(riskLevel == RiskLevel.HIGH, "SafeLayerRegistry: Risk level mismatch (HIGH: 67-100)");
+        _submitReport(targetAddress, riskScore, riskLevel, reportHash);
+    }
+
+    /// @notice Submit multiple risk reports in a single transaction
+    /// @dev Saves ~21000 base gas per additional report vs separate txs
+    /// @param targetAddresses Array of addresses being analyzed
+    /// @param riskScores Array of risk scores (0-100)
+    /// @param riskLevels Array of risk levels
+    /// @param reportHashes Array of report hashes
+    function submitBatchReports(
+        address[] calldata targetAddresses,
+        uint8[] calldata riskScores,
+        RiskLevel[] calldata riskLevels,
+        bytes32[] calldata reportHashes
+    ) external onlyAnalyzer {
+        uint256 len = targetAddresses.length;
+        if (len == 0) revert EmptyBatch();
+        if (len > MAX_BATCH_SIZE) revert BatchTooLarge();
+        if (len != riskScores.length || len != riskLevels.length || len != reportHashes.length)
+            revert ArrayLengthMismatch();
+
+        for (uint256 i; i < len;) {
+            _submitReport(targetAddresses[i], riskScores[i], riskLevels[i], reportHashes[i]);
+            unchecked { ++i; }
         }
-        
-        // Create and store the report
+    }
+
+    /// @dev Internal: validates inputs and stores a single report
+    function _submitReport(
+        address targetAddress,
+        uint8 riskScore,
+        RiskLevel riskLevel,
+        bytes32 reportHash
+    ) internal {
+        if (targetAddress == address(0)) revert ZeroAddress();
+        if (riskScore > MAX_RISK_SCORE) revert ScoreOutOfRange();
+        if (reportHash == bytes32(0)) revert EmptyReportHash();
+
+        // Validate risk level matches score range
+        if (riskScore <= 33) {
+            if (riskLevel != RiskLevel.LOW) revert RiskLevelMismatch();
+        } else if (riskScore <= 66) {
+            if (riskLevel != RiskLevel.MEDIUM) revert RiskLevelMismatch();
+        } else {
+            if (riskLevel != RiskLevel.HIGH) revert RiskLevelMismatch();
+        }
+
         uint256 reportIndex = reports.length;
-        reports.push(
-            RiskReport({
-                targetAddress: targetAddress,
-                riskScore: riskScore,
-                riskLevel: riskLevel,
-                reportHash: reportHash,
-                timestamp: block.timestamp,
-                analyzer: msg.sender
-            })
-        );
-        
-        // Index by target address for efficient lookup
+        reports.push(RiskReport({
+            targetAddress: targetAddress,
+            riskScore: riskScore,
+            riskLevel: riskLevel,
+            reportHash: reportHash,
+            timestamp: block.timestamp,
+            analyzer: msg.sender
+        }));
+
         reportsByTarget[targetAddress].push(reportIndex);
-        
-        // Emit submission event
+
         emit RiskReportSubmitted(
             targetAddress,
             riskScore,
@@ -168,54 +200,35 @@ contract SafeLayerRegistry {
             block.timestamp
         );
     }
-    
+
     // ============== QUERY FUNCTIONS ==============
-    
+
     /// @notice Get a specific report by index
-    /// @param reportIndex The index of the report
-    /// @return The RiskReport struct
-    /// @dev Panics with out-of-bounds index
     function getReport(uint256 reportIndex) external view returns (RiskReport memory) {
-        require(reportIndex < reports.length, "SafeLayerRegistry: Report index out of bounds");
+        if (reportIndex >= reports.length) revert ReportIndexOutOfBounds();
         return reports[reportIndex];
     }
-    
+
     /// @notice Get all report indices for a target address
-    /// @param targetAddress The address to query
-    /// @return Array of report indices
     function getReportsByTarget(address targetAddress) external view returns (uint256[] memory) {
         return reportsByTarget[targetAddress];
     }
-    
+
     /// @notice Get total number of reports in the registry
-    /// @return Total count of all reports
     function getTotalReports() external view returns (uint256) {
         return reports.length;
     }
-    
+
     /// @notice Get the latest report for a target address
-    /// @param targetAddress The address to query
-    /// @return The most recent RiskReport for the target
-    /// @dev Reverts if no reports exist for the target
+    /// @dev Uses storage pointer to avoid copying full array to memory
     function getLatestReportForTarget(address targetAddress) external view returns (RiskReport memory) {
-        uint256[] memory indices = reportsByTarget[targetAddress];
-        require(indices.length > 0, "SafeLayerRegistry: No reports found for target");
-        
-        uint256 latestIndex = indices[indices.length - 1];
-        return reports[latestIndex];
+        uint256[] storage indices = reportsByTarget[targetAddress];
+        if (indices.length == 0) revert NoReportsForTarget();
+        return reports[indices[indices.length - 1]];
     }
-    
+
     /// @notice Get count of reports for a target address
-    /// @param targetAddress The address to query
-    /// @return Number of reports for the target
     function getReportCountForTarget(address targetAddress) external view returns (uint256) {
         return reportsByTarget[targetAddress].length;
-    }
-    
-    /// @notice Check if an analyzer is approved
-    /// @param analyzerAddress The address to check
-    /// @return True if approved, false otherwise
-    function isAnalyzerApproved(address analyzerAddress) external view returns (bool) {
-        return approvedAnalyzers[analyzerAddress];
     }
 }

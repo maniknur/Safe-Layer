@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import logger from './utils/logger';
 import riskRoutes from './routes/risk';
+import registryRoutes from './routes/registry';
 
 dotenv.config();
 
@@ -72,6 +73,7 @@ app.get('/health', (_req, res) => {
 
 // API Routes
 app.use('/api/risk', riskRoutes);
+app.use('/api/registry', registryRoutes);
 
 // 404 handler
 app.use((req, res) => {

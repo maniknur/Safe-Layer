@@ -1,0 +1,10 @@
+{
+  "contractName": "SafeLayerRegistry",
+  "address": "0x20B28a7b961a6d82222150905b0C01256607B5A3",
+  "deployer": "0x24557aD7e2d5D8699c8696383E037678C7644411",
+  "network": "bnbTestnet",
+  "chainId": 97,
+  "deploymentTime": "2026-02-16T23:16:16.613Z",
+  "txHash": "0x2e75f8c06e4865b385b1f9b55b21430a60cea42a683adb69e9bcd53f6a00925b",
+  "blockNumber": 90776874
+}

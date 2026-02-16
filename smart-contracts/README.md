@@ -58,14 +58,27 @@ It is designed for **SafeLayer**, a Web3 security analysis platform, and stores 
 
 ### 🔐 Security Features
 
-- **Owner-based Authorization:** Only owner can manage analyzers
+- **OpenZeppelin Ownable:** Safe ownership control (prevents accidental loss)
+- **Analyzer Whitelist (onlyAnalyzer modifier):**
+  - Only approved analyzers can submit risk reports
+  - Prevents unauthorized data manipulation
+  - Owner controls approval/revocation
+- **Owner-based Authorization (onlyOwner modifier):**
+  - Only owner can approve/remove analyzer addresses
+  - Only owner can transfer ownership (2-step process)
 - **Input Validation:** 
   - Non-zero addresses
   - Risk score ≤ 100
   - Non-zero report hash
   - Risk level matches score range
-- **Immutable Data:** Event-based on-chain logging
-- **Private Storage:** Report array is private; access via getters only
+- **Immutable Data:** 
+  - Reports never modified or deleted
+  - Full audit trail preserved on-chain
+- **Private Storage:** Report array is private; access via secure getters only
+- **🔒 Production Enhancement (Optional):**
+  - Signature verification not yet implemented
+  - Recommended for mainnet: Backend signs data off-chain, contract verifies on-chain
+  - See [SIGNATURE_VERIFICATION_GUIDE.md](./SIGNATURE_VERIFICATION_GUIDE.md) for production upgrade path
 
 ## Contract Specification
 
@@ -303,26 +316,55 @@ npm run compile
 
 ### ✅ Implemented Protections
 
-- Owner-based authorization
-- Address validation (non-zero checks)
-- Risk score validation (≤ 100)
-- Risk level validation (matches score range)
-- Immutable storage (no delete/update functions)
-- Private arrays with public getters
+- **Access Control:**
+  - `onlyAnalyzer` modifier: Only approved analyzers submit reports
+  - `onlyOwner` modifier (via Ownable2Step): Only owner manages analyzers
+  - Prevents unauthorized risk data manipulation
+
+- **Address Validation:** Non-zero checks on target and analyzer addresses
+
+- **Risk Data Validation:**
+  - Risk score must be 0-100
+  - Risk level must match score range (LOW: 0-33, MEDIUM: 34-66, HIGH: 67-100)
+
+- **Immutable Storage:**
+  - No delete or update functions
+  - Full audit trail preserved forever
+  - Reports indexed by target for efficient querying
+
+- **Ownership Safety:**
+  - Uses OpenZeppelin's Ownable2Step (2-step transfer)
+  - Prevents accidental ownership loss
+  - Better than basic Ownable (1-step)
 
 ### 🔍 Audit Notes
 
 - No external calls (no reentrancy risk)
 - No assembly code
 - No complex state transitions
-- Event-based state transparency
+- Events properly indexed for off-chain monitoring
+- Uses battle-tested OpenZeppelin libraries
 
-### ⚠️ Important Notes
+### ⚠️ Critical Security Notes
 
-- Contract owner has power to approve/remove analyzers
-- Backend private keys must be kept secure
-- Only approved analyzers can submit reports
-- Reports are immutable once submitted
+1. **Backend Private Keys Must Be Secure**
+   - Only approved backend wallet can submit reports
+   - If compromised → owner must call `removeAnalyzer()` immediately
+
+2. **Owner Should Be Secure Address**
+   - Hardware wallet recommended for mainnet
+   - Controls all analyzer approvals
+   - Can transfer ownership via 2-step process
+
+3. **Only Approve Official SafeLayer Addresses**
+   - Never approve random addresses
+   - Verify backend address before approval
+   - Use multi-sig for mainnet (recommended)
+
+4. **Data Immutability**
+   - All submitted reports are permanent
+   - Cannot delete incorrect reports
+   - Solution: Submit corrected report (old one still visible)
 
 ## Troubleshooting
 
@@ -362,6 +404,22 @@ npm run compile
 - [ ] Monitoring/alerting set up for events
 - [ ] Backup of deployment info stored securely
 - [ ] MultiSig or DAO governance considered
+
+## 📚 Event Documentation
+
+Complete guides for event emission, monitoring, and integration:
+
+| Document | Purpose |
+|----------|---------|
+| **[EVENT_EMISSION_STATUS.md](./EVENT_EMISSION_STATUS.md)** | Status check - Events verified & working |
+| **[EVENT_INDEXING_GUIDE.md](./EVENT_INDEXING_GUIDE.md)** | Complete guide - TheGraph, Alchemy, ethers.js setup |
+| **[EVENT_INTEGRATION_EXAMPLES.md](./EVENT_INTEGRATION_EXAMPLES.md)** | Code examples - Backend & frontend integration |
+
+**Quick Links:**
+- 🎯 [Event Definitions](./README.md#events) (in this file)
+- 📊 [Real-Time Monitoring](./EVENT_INDEXING_GUIDE.md#-real-time-monitoring-setup)
+- 💾 [Database Schema](./EVENT_INDEXING_GUIDE.md#-event-data-schema-database)
+- 🔔 [Alerting Setup](./EVENT_INDEXING_GUIDE.md#-real-time-alerting)
 
 ## License
 
