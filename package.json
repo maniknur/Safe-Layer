@@ -1,0 +1,29 @@
+{
+  "name": "safelayer-bnb",
+  "version": "1.0.0",
+  "description": "AI-powered risk intelligence engine for BNB Chain",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --parallel",
+    "build": "npm run build --workspaces",
+    "start": "npm run start --workspaces --parallel",
+    "type-check": "npm run type-check --workspaces"
+  },
+  "keywords": [
+    "BNB",
+    "blockchain",
+    "risk-intelligence",
+    "web3",
+    "security",
+    "smart-contracts"
+  ],
+  "author": "SafeLayer Team",
+  "license": "MIT",
+  "dependencies": {
+    "lucide-react": "^0.564.0"
+  }
+}

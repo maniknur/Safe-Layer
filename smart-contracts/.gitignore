@@ -1,0 +1,52 @@
+# Environment Variables (SENSITIVE!)
+.env
+.env.local
+.env.*.local
+
+# Hardhat
+artifacts/
+cache/
+dist/
+typechain-types/
+
+# Node dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.cproject
+.c9/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Build
+build/
+dist/
+
+# Private keys and deployment secrets
+.secrets
+secrets.json
+
+# Deployment records (local backup only)
+# Uncomment to exclude from version control
+# deployments/

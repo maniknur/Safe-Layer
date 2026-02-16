@@ -1,0 +1,71 @@
+# SafeLayer BNB - Postman Collection
+# Import this into Postman to test the API
+
+{
+  "info": {
+    "name": "SafeLayer BNB API",
+    "description": "API endpoints for SafeLayer BNB risk intelligence engine",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{backend_url}}/health",
+          "host": ["{{backend_url}}"],
+          "path": ["health"]
+        },
+        "description": "Check if backend is running"
+      }
+    },
+    {
+      "name": "Analyze Risk - Example 1",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{backend_url}}/api/risk/0x1234567890123456789012345678901234567890",
+          "host": ["{{backend_url}}"],
+          "path": ["api", "risk", "0x1234567890123456789012345678901234567890"]
+        },
+        "description": "Analyze wallet risk"
+      }
+    },
+    {
+      "name": "Analyze Risk - Example 2",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{backend_url}}/api/risk/0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+          "host": ["{{backend_url}}"],
+          "path": ["api", "risk", "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"]
+        },
+        "description": "Analyze another wallet"
+      }
+    },
+    {
+      "name": "Invalid Address Test",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{backend_url}}/api/risk/invalid-address",
+          "host": ["{{backend_url}}"],
+          "path": ["api", "risk", "invalid-address"]
+        },
+        "description": "Test error handling with invalid address"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "backend_url",
+      "value": "http://localhost:3001",
+      "type": "string"
+    }
+  ]
+}
