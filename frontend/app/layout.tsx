@@ -1,10 +1,15 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import LogoAnimation from '@/components/LogoAnimation'
 
 export const metadata: Metadata = {
   title: 'SafeLayer — BNB Chain Risk Analysis',
   description: 'Check the risk profile of any wallet or smart contract on BNB Chain before you interact. Evidence-based scoring backed by on-chain data.',
   keywords: ['BNB Chain', 'risk analysis', 'smart contract security', 'wallet checker', 'rug pull detection'],
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
 }
 
 export default function RootLayout({
@@ -17,7 +22,8 @@ export default function RootLayout({
       <body className="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased">
         <header className="border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm">
           <nav className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <LogoAnimation />
               <span className="font-semibold text-slate-900 dark:text-white tracking-tight">SafeLayer</span>
               <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded">BNB</span>
             </div>

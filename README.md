@@ -190,14 +190,13 @@ HARDHAT_NETWORK=bnbTestnet node scripts/verify.js testnet
 
 ## AI Usage Disclosure
 
-This project was developed with assistance from **Claude** (Anthropic). AI was used for:
+This project was developed with the assistance of multiple AI tools:
 
-- Code generation and refactoring across backend modules, frontend components, and smart contracts
-- Debugging compilation errors, type mismatches, and deployment issues (BigInt serialization, Etherscan API v2 migration)
-- Architecture decisions (scoring formula weights, floor rules, module separation)
-- Gas optimization strategies for the Solidity contract
+- **ChatGPT Pro** (OpenAI) — Architecture design, scoring logic, documentation
+- **GitHub Copilot Pro** — Code generation and refactoring
+- **Claude Code** (Anthropic) — Complex logic validation, smart contract review, gas optimization
 
-All AI-generated code was reviewed, tested, and validated by the developer. The smart contract was deployed and verified on-chain by the developer's wallet.
+All AI-generated outputs were manually reviewed and validated. The risk scoring engine is fully deterministic at runtime — no AI inference, no LLM calls, no probabilistic models. See [docs/ai-usage.md](docs/ai-usage.md) for full disclosure.
 
 ---
 
@@ -221,6 +220,18 @@ All AI-generated code was reviewed, tested, and validated by the developer. The 
 - Multi-analyzer support with reputation scoring for analyzers
 - Browser extension for inline risk warnings on BscScan and DApps
 - Batch analysis dashboard for portfolio-level risk assessment
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [docs/api.md](docs/api.md) | API endpoints, request/response formats |
+| [docs/ai-usage.md](docs/ai-usage.md) | AI tools disclosure (hackathon requirement) |
+| [docs/environment.md](docs/environment.md) | Environment variables reference |
+| [docs/docker.md](docs/docker.md) | Docker setup |
+| [docs/contributing.md](docs/contributing.md) | Contribution guidelines |
 
 ---
 

@@ -42,3 +42,94 @@ button, input, select, textarea {
     color: #f1f5f9;
   }
 }
+/* ============== LOGO ANIMATIONS ============== */
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes softGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(217, 119, 6, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(217, 119, 6, 0.6);
+  }
+}
+
+/* Header animations */
+header {
+  animation: fadeInDown 0.5s ease-out;
+}
+
+/* Logo specific animations */
+.logo-container {
+  will-change: transform;
+}
+
+/* Smooth page transitions */
+main {
+  animation: fadeInDown 0.6s ease-out 0.1s both;
+}
+
+/* Enhanced transitions for interactive elements */
+a {
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button {
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Loading skeleton animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Smooth hover effect for images */
+img {
+  transition: all 200ms ease;
+}
+
+/* Enhanced dark mode support */
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
