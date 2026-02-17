@@ -11,7 +11,7 @@ import AuditPanel from '@/components/AuditPanel'
 import RadarChart from '@/components/RadarChart'
 import OnChainIndicatorsTable from '@/components/OnChainIndicatorsTable'
 import RegistryStatus from '@/components/RegistryStatus'
-import BalloonsAnimation from '@/components/BalloonsAnimation'
+import AmbientBalloonsBackground from '@/components/AmbientBalloonsBackground'
 import type { RiskData, SearchHistoryItem } from '@/lib/types'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
@@ -24,6 +24,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([])
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
+  const [hasInteracted, setHasInteracted] = useState(false)
 
   const handleAnalyze = useCallback(async (address: string) => {
     setLoading(true)
@@ -96,12 +97,18 @@ export default function Home() {
     ? Object.values(riskData.evidence).flat().filter(f => f.severity !== 'info').length
     : 0
 
+  const handleInteraction = () => {
+    if (!hasInteracted) {
+      setHasInteracted(true)
+    }
+  }
+
   return (
-    <div className="relative min-h-screen">
-      {/* Background balloon animation - only show when no risk data */}
-      {!riskData && <BalloonsAnimation />}
+    <div className="relative min-h-screen" onClick={handleInteraction}>
+      {/* Ambient background balloon animation */}
+      <AmbientBalloonsBackground isInteracted={hasInteracted} />
       
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 relative z-10">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 relative z-20">
       {/* Search */}
       <div className="mb-8">
         <RiskAnalyzer onAnalyze={handleAnalyze} loading={loading} searchHistory={searchHistory} />
