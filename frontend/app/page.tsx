@@ -11,6 +11,7 @@ import AuditPanel from '@/components/AuditPanel'
 import RadarChart from '@/components/RadarChart'
 import OnChainIndicatorsTable from '@/components/OnChainIndicatorsTable'
 import RegistryStatus from '@/components/RegistryStatus'
+import BalloonsAnimation from '@/components/BalloonsAnimation'
 import type { RiskData, SearchHistoryItem } from '@/lib/types'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
@@ -96,7 +97,11 @@ export default function Home() {
     : 0
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div className="relative min-h-screen">
+      {/* Background balloon animation - only show when no risk data */}
+      {!riskData && <BalloonsAnimation />}
+      
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 relative z-10">
       {/* Search */}
       <div className="mb-8">
         <RiskAnalyzer onAnalyze={handleAnalyze} loading={loading} searchHistory={searchHistory} />
@@ -263,6 +268,7 @@ export default function Home() {
           </p>
         </div>
       )}
+      </div>
     </div>
   )
 }

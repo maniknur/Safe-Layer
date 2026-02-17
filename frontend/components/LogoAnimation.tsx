@@ -18,7 +18,7 @@ export default function LogoAnimation() {
             transform: translateY(0px);
           }
           50% {
-            transform: translateY(-4px);
+            transform: translateY(-8px);
           }
         }
 
@@ -109,9 +109,9 @@ export default function LogoAnimation() {
           <Image
             src="/logo.png"
             alt="SafeLayer Logo"
-            width={32}
-            height={32}
-            className="h-8 w-8 object-cover rounded-lg transition-transform hover:scale-110 cursor-pointer"
+            width={80}
+            height={80}
+            className="h-20 w-20 object-cover rounded-lg transition-transform hover:scale-110 cursor-pointer"
             priority
           />
         </div>
