@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import LogoAnimation from '@/components/LogoAnimation'
+import FloatingBalloons from '@/components/FloatingBalloons'
 
 export const metadata: Metadata = {
   title: 'SafeLayer — BNB Chain Risk Analysis',
@@ -20,6 +21,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased">
+        {/* Floating ambient balloons background */}
+        <FloatingBalloons />
+        
         <header className="border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm">
           <nav className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
             <div className="flex items-center gap-3">
