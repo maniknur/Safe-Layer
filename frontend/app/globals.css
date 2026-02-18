@@ -97,20 +97,6 @@ button {
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Loading skeleton animation */
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
 /* Smooth hover effect for images */
 img {
   transition: all 200ms ease;
@@ -123,7 +109,133 @@ img {
   }
 }
 
-/* Reduced motion support */
+/* ============================================================
+   DIGITAL NETWORK BACKGROUND
+   ============================================================
+   "Digital Intelligence Network in Space"
+
+   Elements:
+     .net-node  — small glowing gold dot, drifts upward + twinkles
+     .net-line  — faint connecting line, pulses in/out
+
+   Animation strategy:
+     - Full animation shorthand is set INLINE on each element
+       (avoids Next.js CSS pipeline conflicts).
+     - Keyframes animate ONLY transform + opacity (GPU composited).
+     - No filter in keyframes.
+     - Each node runs two animations simultaneously:
+         netDrift   — slow upward movement (forwards, finite)
+         netTwinkle — gentle opacity oscillation (infinite)
+     - Node is removed from DOM via onAnimationEnd when
+       netDrift completes.
+   ============================================================ */
+
+/* --- Node: glowing dot --- */
+
+.net-node {
+  position: absolute;
+  top: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform, opacity;
+  opacity: 0;
+  background: radial-gradient(
+    circle at 40% 40%,
+    #FFD700,
+    #B8860B
+  );
+  box-shadow:
+    0 0 8px 2px rgba(255, 215, 0, 0.8),
+    0 0 20px 4px rgba(255, 215, 0, 0.35),
+    0 0 40px 8px rgba(255, 215, 0, 0.1);
+  /* animation is set INLINE — do NOT set animation here */
+}
+
+/* --- Line: faint connector --- */
+
+.net-line {
+  position: absolute;
+  height: 1.5px;
+  pointer-events: none;
+  will-change: opacity;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 215, 0, 0.4) 20%,
+    rgba(255, 215, 0, 0.5) 50%,
+    rgba(255, 215, 0, 0.4) 80%,
+    transparent 100%
+  );
+  box-shadow: 0 0 6px 1px rgba(255, 215, 0, 0.2);
+}
+
+/* ---- netDrift: slow upward float ----
+   Custom properties (set inline):
+     --n-opacity : peak opacity (0.3–0.8)
+     --n-drift   : horizontal drift in px
+   Every checkpoint sets BOTH transform AND opacity.
+*/
+
+@keyframes netDrift {
+  0% {
+    transform: translateY(105vh) translateX(0px);
+    opacity: 0;
+  }
+  6% {
+    transform: translateY(99vh) translateX(calc(var(--n-drift, 0px) * 0.04));
+    opacity: var(--n-opacity, 0.5);
+  }
+  25% {
+    transform: translateY(78vh) translateX(calc(var(--n-drift, 0px) * 0.3));
+    opacity: var(--n-opacity, 0.5);
+  }
+  50% {
+    transform: translateY(52vh) translateX(calc(var(--n-drift, 0px) * -0.2));
+    opacity: var(--n-opacity, 0.5);
+  }
+  75% {
+    transform: translateY(26vh) translateX(calc(var(--n-drift, 0px) * 0.5));
+    opacity: var(--n-opacity, 0.5);
+  }
+  90% {
+    transform: translateY(8vh) translateX(calc(var(--n-drift, 0px) * 0.8));
+    opacity: calc(var(--n-opacity, 0.5) * 0.3);
+  }
+  100% {
+    transform: translateY(-10vh) translateX(var(--n-drift, 0px));
+    opacity: 0;
+  }
+}
+
+/* ---- netTwinkle: gentle scale pulse (twinkle) ----
+   Runs INFINITE alongside netDrift.
+   Uses scale instead of opacity to avoid overriding netDrift's opacity.
+   Uses a dedicated keyframe so onAnimationEnd only fires for netDrift.
+*/
+
+@keyframes netTwinkle {
+  0%, 100% {
+    scale: 1;
+  }
+  50% {
+    scale: 0.6;
+  }
+}
+
+/* ---- netLinePulse: faint line fades in and out ---- */
+
+@keyframes netLinePulse {
+  0%, 100% {
+    opacity: 0;
+  }
+  30%, 70% {
+    opacity: 1;
+  }
+}
+
+/* ============== REDUCED MOTION ============== */
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -131,5 +243,10 @@ img {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .net-node,
+  .net-line {
+    display: none !important;
   }
 }

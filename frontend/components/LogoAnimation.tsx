@@ -1,14 +1,8 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
 
 export default function LogoAnimation() {
-  const [isLoaded, setIsLoaded] = useState(false)
-
-  useEffect(() => {
-    setIsLoaded(true)
-  }, [])
 
   return (
     <div className="group relative inline-flex items-center">
@@ -104,14 +98,14 @@ export default function LogoAnimation() {
         }
       `}</style>
 
-      <div className={`logo-container logo-fade-in relative ${isLoaded ? '' : ''}`}>
+      <div className="logo-container logo-fade-in relative">
         <div className="logo-glow relative inline-flex">
           <Image
             src="/logo.png"
             alt="SafeLayer Logo"
-            width={80}
-            height={80}
-            className="h-20 w-20 object-cover rounded-lg transition-transform hover:scale-110 cursor-pointer"
+            width={36}
+            height={36}
+            className="h-9 w-9 object-cover rounded-md transition-transform hover:scale-110 cursor-pointer"
             priority
           />
         </div>
