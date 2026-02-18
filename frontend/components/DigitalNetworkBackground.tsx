@@ -151,9 +151,17 @@ export default function DigitalNetworkBackground() {
     }
   }, [isClient, createNode])
 
-  // ---- SSR gate ----
+  // ---- SSR gate - render empty div on server to prevent hydration mismatch ----
 
-  if (!isClient) return null
+  if (!isClient) {
+    return (
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 pointer-events-none overflow-hidden"
+        style={{ zIndex: 0 }}
+      />
+    )
+  }
 
   return (
     <div

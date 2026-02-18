@@ -1,0 +1,42 @@
+{
+  "$schema": "https://openclaw.ai/schemas/config.json",
+  "agent": {
+    "model": "anthropic/claude-sonnet-4-5-20250929",
+    "workspace": "./workspace"
+  },
+  "plugins": {
+    "enabled": true,
+    "load": {
+      "paths": ["."]
+    }
+  },
+  "tools": {
+    "allow": [
+      "bnb_monitor_blocks",
+      "bnb_analyze_address",
+      "bnb_submit_onchain",
+      "bnb_query_registry"
+    ]
+  },
+  "cron": {
+    "enabled": true,
+    "maxConcurrentRuns": 1
+  },
+  "env": {
+    "vars": {
+      "ANALYZER_PRIVATE_KEY": "${ANALYZER_PRIVATE_KEY}",
+      "BNB_RPC_URL": "https://data-seed-prebsc-1-s1.binance.org:8545/",
+      "BNB_WSS_URL": "wss://bsc-testnet.publicnode.com",
+      "REGISTRY_CONTRACT_ADDRESS": "0x20B28a7b961a6d82222150905b0C01256607B5A3",
+      "BSCSCAN_API_KEY": "${BSCSCAN_API_KEY}",
+      "SAFELAYER_BACKEND_URL": "http://localhost:3001",
+      "RISK_SUBMISSION_THRESHOLD": "0",
+      "AUTO_SUBMIT_ONCHAIN": "true"
+    }
+  },
+  "skills": {
+    "load": {
+      "watch": true
+    }
+  }
+}
